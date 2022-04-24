@@ -23,8 +23,8 @@ None
 
 ## Return Values
 
-If `LRRotLeft` is high, return `TRUE`;
-if `LRRotLeft` is low, return `FALSE`.
+If `LRRotLeft` is high, return `TRUE` (zero flag set);
+if `LRRotLeft` is low, return `FALSE` (zero flag reset).
 
 ## Global Variables
 

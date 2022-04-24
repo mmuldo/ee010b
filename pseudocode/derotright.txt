@@ -1,0 +1,17 @@
+DeRotRight():
+
+IF (RightGrayCodeStack == 11 01 00 10) and (LRRotGrayCode == 11):
+    LRRotRight = 1
+    RightGrayCodeStack == 00 00 00 11
+    Return
+ELSE IF (RightGrayCodeStack == 11 10 00 01) and (LRRotGrayCode == 11):
+    RightGrayCodeStack == 00 00 00 11
+    Return
+ENDIF
+
+IF (RightGrayCodeStack[3, 2] == LRRotGrayCode):
+    RightGrayCodeStack >> 2
+ELSE IF (RightGrayCodeStack[1, 0] != LRRotGrayCode):
+    RightGrayCodeStack << 2
+    RightGrayCodeStack += LRRotGrayCode
+ENDIF

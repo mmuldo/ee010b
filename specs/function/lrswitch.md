@@ -11,10 +11,10 @@ the L/R switch press action.
 
 Returns `TRUE` (i.e. sets the zero flag) if the L/R switch has been pressed
 since the last time `LRSwitch` was called,
-as indicated by the `LRSwitchFlagPressed` flag set by the debouncing logic;
+as indicated by the `LRSwitchPressed` flag set by the debouncing logic;
 otherwise,
 returns `FALSE` (i.e. resets the zero flag).
-When returning `TRUE`, resets `LRSwitchFlagPressed` before returning,
+When returning `TRUE`, resets `LRSwitchPressed` before returning,
 in order to handle future presses.
 
 ## Arguments
@@ -23,8 +23,8 @@ None
 
 ## Return Values
 
-If `LRSwitchPressed` is high, return `TRUE`;
-if `LRSwitchPressed` is low, return `FALSE`.
+If `LRSwitchPressed` is high, return `TRUE` (zero flag set);
+if `LRSwitchPressed` is low, return `FALSE` (zero flag reset).
 
 ## Global Variables
 

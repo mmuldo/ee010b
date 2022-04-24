@@ -11,10 +11,10 @@ the U/D switch press action.
 
 Returns `TRUE` (i.e. sets the zero flag) if the U/D switch has been pressed
 since the last time `UDSwitch` was called,
-as indicated by the `UDSwitchFlagPressed` flag set by the debouncing logic;
+as indicated by the `UDSwitchPressed` flag set by the debouncing logic;
 otherwise,
 returns `FALSE` (i.e. resets the zero flag).
-When returning `TRUE`, resets `UDSwitchFlagPressed` before returning,
+When returning `TRUE`, resets `UDSwitchPressed` before returning,
 in order to handle future presses.
 
 ## Arguments
@@ -23,8 +23,8 @@ None
 
 ## Return Values
 
-If `UDSwitchPressed` is high, return `TRUE`;
-if `UDSwitchPressed` is low, return `FALSE`.
+If `UDSwitchPressed` is high, return `TRUE` (zero flag set);
+if `UDSwitchPressed` is low, return `FALSE` (zero flag reset).
 
 ## Global Variables
 

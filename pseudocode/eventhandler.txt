@@ -1,0 +1,10 @@
+EventHandler():
+
+WHILE True:
+    DebounceLR()
+    DebounceUD()
+    DeRotLeft()
+    DeRotRight()
+    DeRotUp()
+    DeRotDown()
+ENDWHILE

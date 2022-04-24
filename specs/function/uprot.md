@@ -21,8 +21,8 @@ Note: this flag is reset by the function.
 
 ## Return Values
 
-If `UDRotUp` is high, return `TRUE`;
-if `UDRotUp` is low, return `FALSE`.
+If `UDRotUp` is high, return `TRUE` (zero flag set);
+if `UDRotUp` is low, return `FALSE` (zero flag reset).
 
 ## Global Variables
 

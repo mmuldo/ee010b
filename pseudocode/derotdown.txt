@@ -1,0 +1,17 @@
+DeRotDown():
+
+IF (DownGrayCodeStack == 11 01 00 10) and (UDRotGrayCode == 11):
+    UDRotDown = 1
+    DownGrayCodeStack == 00 00 00 11
+    Return
+ELSE IF (DownGrayCodeStack == 11 10 00 01) and (UDRotGrayCode == 11):
+    DownGrayCodeStack == 00 00 00 11
+    Return
+ENDIF
+
+IF (DownGrayCodeStack[3, 2] == UDRotGrayCode):
+    DownGrayCodeStack >> 2
+ELSE IF (DownGrayCodeStack[1, 0] != UDRotGrayCode):
+    DownGrayCodeStack << 2
+    DownGrayCodeStack += UDRotGrayCode
+ENDIF

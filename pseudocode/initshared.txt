@@ -1,0 +1,17 @@
+InitShared():
+
+LRSwitchPressed = 0
+LRSwitchCounter = 20
+
+UDSwitchPressed = 0
+UDSwitchCounter = 20
+
+LRRotLeft = 0
+LRRotRight = 0
+LRRotGrayCode = 00
+
+UDRotUp = 0
+UDRotDown = 0
+UDRotGrayCode = 00
+
+set interrupt flag

@@ -1,0 +1,14 @@
+LeftRot():
+
+push status flags
+clear interrupt flag
+
+IF LRRotLeft == 1:
+    set zero flag
+ELSE:
+    reset zero flag
+ENDIF
+
+LRRotLeft = 0
+set interrupt flag
+pop status flags

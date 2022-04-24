@@ -23,8 +23,8 @@ None
 
 ## Return Values
 
-If `UDRotDown` is high, return `TRUE`;
-if `UDRotDown` is low, return `FALSE`.
+If `UDRotDown` is high, return `TRUE` (zero flag set);
+if `UDRotDown` is low, return `FALSE` (zero flag reset).
 
 ## Global Variables
 

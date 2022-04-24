@@ -1,0 +1,4 @@
+InitPorts():
+
+DDRE = 0
+PortE = 0
