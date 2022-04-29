@@ -1,16 +1,16 @@
-; DebounceLR Specificaiton
+; DebounceUD Specificaiton
 ; ========================
 ; 
 ; Description
 ; -----------
-; `DebounceLR()` is responsible for distinguishing a press from random
-; fluctuations on the L/R switch.
+; `DebounceUD()` is responsible for distinguishing a press from random
+; fluctuations on the U/D switch.
 ; 
 ; Operational Description
 ; -----------------------
-; Holding down the L/R switch for 20 ms (20 timer cycles consecutively)
-; registers as a press. In more detail, the L/R switch pin being high for
-; 20 ms will result in the `LRSwitchPressed` flag being set.
+; Holding down the U/D switch for 20 ms (20 timer cycles consecutively)
+; registers as a press. In more detail, the U/D switch pin being high for
+; 20 ms will result in the `UDSwitchPressed` flag being set.
 ; 
 ; Arguments
 ; ---------
@@ -26,8 +26,8 @@
 ; 
 ; Shared Variables
 ; ----------------
-; LRSwitchPressed (bool): RW
-; LRSwitchCounter (int): RW
+; UDSwitchPressed (bool): RW
+; UDSwitchCounter (int): RW
 ; 
 ; Local Variables
 ; ---------------
@@ -35,7 +35,7 @@
 ; 
 ; Inputs
 ; ------
-; PortE[5]
+; PortE[2]
 ; 
 ; Outputs
 ; -------
@@ -68,11 +68,14 @@
 ; Pseudocode
 ; ----------
 ; IF PortE[5] == 1:
-;   LRSwitchCounter--
-;   IF LRSwitchCounter <= 0:
-;       LRSwitchPressed = 1
-;       LRSwitchCounter = 0
+;   IF UDSwitchCounter == 0:
+;       UDSwitchCounter = 0
+;   ELSE IF UDSwitchCounter == 1:
+;       UDSwitchPressed = 1
+;       UDSwitchCounter--
+;   ELSE:
+;       UDSwitchCounter--
 ;   ENDIF
 ; ELSE:
-;   LRSwitchCounter = 20
+;   UDSwitchCounter = 20
 ; ENDIF

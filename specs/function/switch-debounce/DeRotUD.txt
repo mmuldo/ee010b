@@ -1,0 +1,146 @@
+; DeRotUD Specification
+; =======================
+; 
+; Description
+; -----------
+; `DeRotUD()` is responsible for distinguishing between a turn from
+; one detent to the adjacent detent on the U/D rotary encoder and random
+; jiggling in between detents.
+; 
+; Operational Description
+; -----------------------
+; Input rotations on the U/D rotary encoder are represented by the following
+; four ordered graycodes:
+; 
+; * `11`: detent 1
+; * `01`: just up of detent 1
+; * `00`: middle between detent 1 and detent 2
+; * `10`: just down of detent 2
+; * next `11`: detent 2
+; 
+; A up rotation should be registered if and only if the following sequence
+; of graycode inputs is seen on the U/D rotary encoder:
+
+; 11 -> [sequence of inputs] 
+;   -> 11 -> 10 -> [sequence of inputs] 
+;   -> 10 -> 00 -> [sequence of inputs] 
+;   -> 00 -> 01 -> [sequence of inputs] 
+;   -> 01 -> 11
+;
+; In other words, we need to see a complete rotation of graycode inputs in
+; order `11 -> 10 -> 00 -> 01 -> 11`,
+; but it is possible that other inputs could interject this rotation based on
+; oscillations of the U/D rotary encoder as it moves from one detent to
+; another.
+; After observing a complete up rotation, the `UDRotup` flag is set.
+;
+; A down rotation should be registered if and only if the following sequence
+; of graycode inputs is seen on the U/D rotary encoder:
+;
+; 11 -> [sequence of inputs] 
+;   -> 11 -> 01 -> [sequence of inputs] 
+;   -> 01 -> 00 -> [sequence of inputs] 
+;   -> 00 -> 10 -> [sequence of inputs] 
+;   -> 10 -> 11
+;
+; In other words, we need to see a complete rotation of graycode inputs in
+; order `11 -> 01 -> 00 -> 10 -> 11`,
+; but it is possible that other inputs could interject this rotation based on
+; oscillations of the U/D rotary encoder as it moves from one detent to
+; another.
+; After observing a complete down rotation, the `UDRotdown` flag is set.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; None
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; UDRotup (bool): W
+; UDRotdown (bool): W
+; UDRotGrayCode (8-bit string): RW
+; 
+; Local Variables
+; ---------------
+; UDGrayCodeStack (8-bit string): RW
+;   Initialized to `00 00 00 11`.
+;   This keeps track of the most recently seen `UDRotGrayCode`s.
+;   An example sequence of runs looks like:
+;   
+;   | UDRotGrayCode | UDGrayCodeStack   |
+;   | ------------- | ----------------- |
+;   |               | 00 00 00 11       |
+;   |11             | 00 00 00 11       |
+;   |10             | 00 00 11 10       |
+;   |11             | 00 00 00 11       |
+;   |10             | 00 00 11 10       |
+;   |00             | 00 11 10 00       |
+;   |00             | 00 11 10 00       |
+;   |00             | 00 11 10 00       |
+;   |01             | 11 10 00 01       |
+;   |00             | 00 11 10 00       |
+;   |01             | 11 10 00 01       |
+;   |11             | 00 00 00 00       |
+; 
+; Inputs
+; ------
+; PortE[7,6]
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; Stack in the form of a bit string, where things get "stacked" by logically
+; shifting up and "popped" by logically shifting down, 2 bits at a time.
+; 
+; Limitations
+; -----------
+; Turning the U/D rotary encoder too fast could cause jumping between
+; non-adjacent graycodes, which isn't handled by the function.
+; However, all that will happen is that the up rotation doesn't get
+; registered, i.e. this won't cause the algorithm to break.
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; IF (UDGrayCodeStack == 11 10 00 01) and (UDRotGrayCode == 11):
+;     UDRotUp = 1
+;     UDGrayCodeStack == 00 00 00 11
+;     Return
+; ELSE IF (UDGrayCodeStack == 11 01 00 10) and (UDRotGrayCode == 11):
+;     UDRotDown = 1
+;     UDGrayCodeStack == 00 00 00 11
+;     Return
+; ENDIF
+; 
+; IF (UDGrayCodeStack[3, 2] == UDRotGrayCode):
+;     UDGrayCodeStack >> 2
+; ELSE IF (UDGrayCodeStack[1, 0] != UDRotGrayCode):
+;     UDGrayCodeStack << 2
+;     UDGrayCodeStack += UDRotGrayCode
+; ENDIF

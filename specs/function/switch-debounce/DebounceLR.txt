@@ -1,0 +1,81 @@
+; DebounceLR Specificaiton
+; ========================
+; 
+; Description
+; -----------
+; `DebounceLR()` is responsible for distinguishing a press from random
+; fluctuations on the L/R switch.
+; 
+; Operational Description
+; -----------------------
+; Holding down the L/R switch for 20 ms (20 timer cycles consecutively)
+; registers as a press. In more detail, the L/R switch pin being high for
+; 20 ms will result in the `LRSwitchPressed` flag being set.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; None
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; LRSwitchPressed (bool): RW
+; LRSwitchCounter (int): RW
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; PortE[5]
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; Decrementer
+; 
+; Data Structures
+; ---------------
+; None
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; IF PortE[5] == 1:
+;   IF LRSwitchCounter == 0:
+;       LRSwitchCounter = 0
+;   ELSE IF LRSwitchCounter == 1:
+;       LRSwitchPressed = 1
+;       LRSwitchCounter--
+;   ELSE:
+;       LRSwitchCounter--
+;   ENDIF
+; ELSE:
+;   LRSwitchCounter = 20
+; ENDIF
