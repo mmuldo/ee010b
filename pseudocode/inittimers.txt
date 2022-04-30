@@ -1,4 +1,0 @@
-InitTimers():
-
-Timer0 = 0
-Timer0Prescaler = 8000
