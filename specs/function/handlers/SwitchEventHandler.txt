@@ -1,0 +1,73 @@
+; SwitchEventHandler Specification
+; ================================
+; 
+; Description
+; -----------
+; Handles the following events:
+; 
+; * switch presses (specifically, debouncing switch presses)
+; * rotary encoder rotations (specifically, debouncing rotations)
+; 
+; Operational Description
+; -----------------------
+; This function simply loops calls the following debouncing functions once
+; ever 1 ms (every time Timer0 generates an interrupt):
+;   DebounceLR()
+;   DebounceUD()
+;   DeRotLR()
+;   DeRotUD()
+;
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; None
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; None
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; DebounceLR()
+; DebounceUD()
+; DeRotLR()
+; DeRotUD()
