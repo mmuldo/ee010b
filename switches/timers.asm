@@ -1,29 +1,8 @@
+; utility macros
+.include "util.asm"
+
 ; constants for timers
 .include "timers.inc"
-
-; OUTI macro
-; ==========
-;
-; Description
-; -----------
-; stores immediate in I/O register
-;
-; Arguments
-; ---------
-; @0: I/O register
-; @1: immediate value
-;
-; Registers Changed
-; -----------------
-; R16
-;
-; Stack Depth
-; -----------
-; None
-.MACRO OUTI
-LDI     R16, @1
-OUT     @0, R16
-.ENDMACRO
 
 ; InitTimer0 Specification
 ; ============================
@@ -106,3 +85,4 @@ InitTimer0:
     OUTI    TIMSK, TIMER0_MSK
 
     POP     R16
+    RET

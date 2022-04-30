@@ -71,7 +71,7 @@
         JMP     PC                      ;timer 1 compare match A
         JMP     PC                      ;timer 1 compare match B
         JMP     PC                      ;timer 1 overflow
-        JMP     PC                      ;timer 0 compare match
+        JMP     SwitchEventHandler      ;timer 0 compare match
         JMP     PC                      ;timer 0 overflow
         JMP     PC                      ;SPI transfer complete
         JMP     PC                      ;UART 0 Rx complete
@@ -105,6 +105,10 @@ Start:                                  ;start the CPU after a reset
 
 
         ;call any initialization functions
+        RCALL   InitSwitchPort
+        RCALL   InitSwitchVars
+        RCALL   InitTimer0
+        SEI
 
 
         RCALL   SwitchTest              ;do the switch tests
@@ -362,3 +366,7 @@ TopOfStack:     .BYTE   1               ;top of the stack
 ; since don't have a linker, include all the .asm files
 
 .include "switches.asm"
+.include "switches.inc"
+.include "timers.asm"
+.include "timers.inc"
+.include "ports.asm"
