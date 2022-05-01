@@ -600,7 +600,7 @@ DeRotLR:
     LDS     R19, LRGrayCodeStack    
                                     
 
-    CPI     LRGrayCodeStack, GRAYCODE_CCW_FULL ; if on detent, check if 
+    CPI     R19, GRAYCODE_CCW_FULL ; if on detent, check if 
                                                     ; graycode stack 
                                                     ; is ccw full
     BRNE    LR_CHECK_CW_FULL                       
@@ -611,7 +611,7 @@ DeRotLR:
     JMP     DeRotLR_RET
 
 LR_CHECK_CW_FULL:
-    CPI     LRGrayCodeStack, GRAYCODE_CW_FULL ; if on detent, and 
+    CPI     R19, GRAYCODE_CW_FULL ; if on detent, and 
                                                     ; not ccw full, check if 
                                                     ; graycode stack 
                                                     ; is cw full
@@ -810,7 +810,7 @@ DeRotUD:
     LDS     R19, UDGrayCodeStack    
                                     
 
-    CPI     UDGrayCodeStack, GRAYCODE_CCW_FULL ; if on detent, check if 
+    CPI     R19, GRAYCODE_CCW_FULL ; if on detent, check if 
                                                     ; graycode stack 
                                                     ; is ccw full
     BRNE    UD_CHECK_CW_FULL                       
@@ -821,7 +821,7 @@ DeRotUD:
     JMP     DeRotUD_RET
 
 UD_CHECK_CW_FULL:
-    CPI     UDGrayCodeStack, GRAYCODE_CW_FULL ; if on detent, and 
+    CPI     R19, GRAYCODE_CW_FULL ; if on detent, and 
                                                     ; not ccw full, check if 
                                                     ; graycode stack 
                                                     ; is cw full
