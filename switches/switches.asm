@@ -1,6 +1,8 @@
 .DSEG
     LRSwitchPressed:    .BYTE 1 ; bool indicating LR switch has been pressed
+    LRSwitchCounter:    .BYTE 1 ; counter for debouncing LR switch
     UDSwitchPressed:    .BYTE 1 ; bool indicating UD switch has been pressed 
+    UDSwitchCounter:    .BYTE 1 ; counter for debouncing UD switch
 
     LRRotLeft:          .BYTE 1 ; bool indicating LR has been rotated left
     LRRotRight:         .BYTE 1 ; bool indicating LR has been rotated right
@@ -146,8 +148,8 @@ InitSwitchVars:
     STS     LRRotRight, R16
     STS     LRGrayCodeStack, R18
 
-    STS     UDRotLeft, R16
-    STS     UDRotRight, R16
+    STS     UDRotUp, R16
+    STS     UDRotDown, R16
     STS     UDGrayCodeStack, R18
 
     POP     R18
