@@ -1,5 +1,5 @@
 ; utility macros
-.include "util.asm"
+;.include "util.asm"
 
 ; constants for timers
 .include "timers.inc"
@@ -80,9 +80,14 @@
 InitTimer0:
     PUSH    R16
 
-    OUTI    TCCR0, TIMER0_CTR
-    OUTI    OCR0, TIMER0_COMP
-    OUTI    TIMSK, TIMER0_MSK
+    LDI     R16, TIMER0_CTR
+    OUT     TCCR0, R16
+
+    LDI     R16, TIMER0_COMP
+    OUT     OCR0, R16
+
+    LDI     R16, TIMER0_MSK
+    OUT     TIMSK, R16
 
     POP     R16
     RET

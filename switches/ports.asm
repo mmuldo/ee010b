@@ -1,5 +1,5 @@
 ; utility macros
-.include "util.asm"
+;.include "util.asm"
 
 ; InitSwitchPort Specification
 ; ============================
@@ -73,7 +73,8 @@
 ; None
 InitSwitchPort:
     PUSH    R16
-    OUTI    DDRE, 0     ; set PortE as an input port
+    LDI     R16, 0
+    OUT     DDRE, R16 ; set PortE as an input port
     POP     R16
     RET
 

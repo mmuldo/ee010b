@@ -1,3 +1,4 @@
+; NOTE: commented out because macros don't seem to be working :(
 ; OUTI macro
 ; ==========
 ;
@@ -17,10 +18,10 @@
 ; Stack Depth
 ; -----------
 ; None
-.MACRO OUTI
-LDI     R16, @1
-OUT     @0, R16
-.ENDMACRO
+;.MACRO OUTI
+;LDI     R16, @1
+;OUT     @0, R16
+;.ENDMACRO
 
 ; NOTE: the following macros are commented out because the label jumping isn't
 ; working as expected

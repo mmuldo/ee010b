@@ -1,5 +1,5 @@
 .include "util.inc"
-.include "util.asm"
+;.include "util.asm"
 
 .DSEG
     LRSwitchPressed:    .BYTE 1 ; bool indicating LR switch has been pressed
