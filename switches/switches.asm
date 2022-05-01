@@ -316,7 +316,7 @@ DebounceLR:
     PUSH    R17 ; used for LRSwitchPressed writing
 
     IN      R16, PinE
-    AND     R16, PORTE_LRSWITCH_MSK
+    ANDI    R16, PORTE_LRSWITCH_MSK
 
     CPI     R16, PORTE_LRSWITCH_MSK ; check if LR is not pressed (== 1)
     BREQ    LR_NOT_PRESSED
@@ -432,7 +432,7 @@ DebounceUD:
     PUSH    R17 ; used for UDSwitchPressed writing
 
     IN      R16, PinE
-    AND     R16, PORTE_UDSWITCH_MSK
+    ANDI    R16, PORTE_UDSWITCH_MSK
 
     CPI     R16, PORTE_UDSWITCH_MSK ; check if UD is not pressed (== 1)
     BREQ    UD_NOT_PRESSED
@@ -580,7 +580,7 @@ DeRotLR:
 
     ; read in LR rotary encoder graycode
     IN      R17, PinE
-    AND     R17, PORTE_LRROT_MSK
+    ANDI    R17, PORTE_LRROT_MSK
 
     ; if macro ever gets working, uncomment this
     ;LSRK    R17, PORTE_LRROT_SHIFT
@@ -625,7 +625,7 @@ LR_CHECK_CW_FULL:
 LR_STACK_UPDATE:
     MOV     R20, R19         ; get LRGrayCodeStack[3, 2] (2nd to last gray
                                 ; code)
-    AND     R20, 0b00001100
+    ANDI    R20, 0b00001100
 
     ; uncomment if this macro ever gets working
     ;LSRK    R20, 2
@@ -645,7 +645,7 @@ LR_STACK_UPDATE:
 
 LR_CHECK_STACK_PREV:
     MOV     R20, R19         ; get LRGrayCodeStack[1, 0] (previous gray code)
-    AND     R20, 0b00000011
+    ANDI    R20, 0b00000011
 
     CP      R20, R17            ; check if current gray code is equal to the
                                     ; previous graycode
@@ -791,7 +791,7 @@ DeRotUD:
 
     ; read in UD rotary encoder graycode
     IN      R17, PinE
-    AND     R17, PORTE_UDROT_MSK
+    ANDI    R17, PORTE_UDROT_MSK
     ; uncomment if this macro ever gets working
     ;LSRK    R17, PORTE_UDROT_SHIFT
     LDI     R16, PORTE_UDROT_SHIFT
@@ -835,7 +835,7 @@ UD_CHECK_CW_FULL:
 UD_STACK_UPDATE:
     MOV     R20, R19         ; get UDGrayCodeStack[3, 2] (2nd to last gray
                                 ; code)
-    AND     R20, 0b00001100
+    ANDI    R20, 0b00001100
     ; uncomment if this ever gets working
     ;LSRK    R20, 2
     LSR     R20
@@ -854,7 +854,7 @@ UD_STACK_UPDATE:
 
 UD_CHECK_STACK_PREV:
     MOV     R20, R19         ; get UDGrayCodeStack[1, 0] (previous gray code)
-    AND     R20, 0b00000011
+    ANDI    R20, 0b00000011
 
     CP      R20, R17            ; check if current gray code is equal to the
                                     ; previous graycode
