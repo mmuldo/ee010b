@@ -582,7 +582,18 @@ DeRotLR:
     ; read in LR rotary encoder graycode
     IN      R17, PinE
     AND     R17, PORTE_LRROT_MSK
-    LSRK    R17, PORTE_LRROT_SHIFT
+
+    ; if macro ever gets working, uncomment this
+    ;LSRK    R17, PORTE_LRROT_SHIFT
+    LDI     R16, PORTE_LRROT_SHIFT
+    LRROT_LSR:
+        CPI     R16, 0      ; check if K is 0
+        BREQ    LRROT_LSR_DONE  ; if so, we're done
+    
+        LSR     R17
+        Dec     R16
+        JMP     LRROT_LSR
+    LRROT_LSR_DONE:
 
     CPI     R17, 0b00000011     ; check if on detent
     BRNE    LR_STACK_UPDATE
@@ -616,13 +627,20 @@ LR_STACK_UPDATE:
     MOV     R20, R19         ; get LRGrayCodeStack[3, 2] (2nd to last gray
                                 ; code)
     AND     R20, 0b00001100
-    LSRK    R20, 2
+
+    ; uncomment if this macro ever gets working
+    ;LSRK    R20, 2
+    LSR     R20
+    LSR     R20
 
     CP      R20, R17            ; check if current gray code is equal to the
                                     ; 2nd to last gray code
     BRNE    LR_CHECK_STACK_PREV
-    LSRK    R19, 2                  ; if it is the 2nd to last gray code,
-                                        ; pop previous gray code off stack
+
+    ; uncomment if macro gets working
+    ;LSRK    R19, 2
+    LSR     R19                 ; if it is the 2nd to last gray code,
+    LSR     R19                    ; pop previous gray code off stack
     STS     LRGrayCodeStack, R19
     JMP     DeRotLR_RET
 
@@ -633,8 +651,11 @@ LR_CHECK_STACK_PREV:
     CP      R20, R17            ; check if current gray code is equal to the
                                     ; previous graycode
     BREQ    DeRotLR_RET
-    LSLK    R19, 2                  ; if it isn't the previous gray code,
+    ; uncomment if this macro ever gets working
+    ; LSLK    R19, 2                  ; if it isn't the previous gray code,
                                         ; push current graycode onto stack
+    LSL     R19
+    LSL     R19
     ADD     R19, R17
     STS     LRGrayCodeStack, R19
     
@@ -772,7 +793,17 @@ DeRotUD:
     ; read in UD rotary encoder graycode
     IN      R17, PinE
     AND     R17, PORTE_UDROT_MSK
-    LSRK    R17, PORTE_UDROT_SHIFT
+    ; uncomment if this macro ever gets working
+    ;LSRK    R17, PORTE_UDROT_SHIFT
+    LDI     R16, PORTE_UDROT_SHIFT
+    UDROT_LSR:
+        CPI     R16, 0      ; check if K is 0
+        BREQ    UDROT_LSR_DONE  ; if so, we're done
+    
+        LSR     R17
+        Dec     R16
+        JMP     UDROT_LSR
+    UDROT_LSR_DONE:
 
     CPI     R17, 0b00000011     ; check if on detent
     BRNE    UD_STACK_UPDATE
@@ -806,12 +837,18 @@ UD_STACK_UPDATE:
     MOV     R20, R19         ; get UDGrayCodeStack[3, 2] (2nd to last gray
                                 ; code)
     AND     R20, 0b00001100
-    LSRK    R20, 2
+    ; uncomment if this ever gets working
+    ;LSRK    R20, 2
+    LSR     R20
+    LSR     R20
 
     CP      R20, R17            ; check if current gray code is equal to the
                                     ; 2nd to last gray code
     BRNE    UD_CHECK_STACK_PREV
-    LSRK    R19, 2                  ; if it is the 2nd to last gray code,
+    ; uncomment if this ever gets working
+    ;LSRK    R19, 2                  ; if it is the 2nd to last gray code,
+    LSR     R19
+    LSR     R19
                                         ; pop previous gray code off stack
     STS     UDGrayCodeStack, R19
     JMP     DeRotUD_RET
@@ -823,8 +860,11 @@ UD_CHECK_STACK_PREV:
     CP      R20, R17            ; check if current gray code is equal to the
                                     ; previous graycode
     BREQ    DeRotUD_RET
-    LSLK    R19, 2                  ; if it isn't the previous gray code,
+    ; uncomment if ever gets working
+    ;LSLK    R19, 2                  ; if it isn't the previous gray code,
                                         ; push current graycode onto stack
+    LSL     R19
+    LSL     R19
     ADD     R19, R17
     STS     UDGrayCodeStack, R19
     
@@ -905,60 +945,205 @@ DeRotUD_RET:
 ; 
 ; Known Bugs
 ; ----------
-; None
+; This doesn't work because of label issues, so commented out for now
 ; 
 ; Special Notes
 ; -------------
 ; None
-.MACRO CheckSwitchAction
-PUSH    R16 ; save status flags
-PUSH    R17 ; R @0
-PUSH    R18 ; W @0
+;.MACRO CheckSwitchAction
+;PUSH    R16 ; save status flags
+;PUSH    R17 ; R @0
+;PUSH    R18 ; W @0
+;
+;IN      R16, SREG   ; freeze status flags
+;CLI
+;
+;; critical code
+;LDS     R17, @0     ; save @0 to register
+;LDI     R18, FALSE  ; reinit @0
+;STS     @0, R18
+;; end critical code
+;
+;OUT     SREG, R16   ; unfreeze status flags
+;
+;CPI     R17, TRUE   ; check if @0 is set
+;BRNE    1f
+;SEZ                 ; if set, return true
+;JMP     2f
+;
+;1:
+;    CLZ             ; if reset, return false
+;2:
+;    POP     R18
+;    POP     R17
+;    POP     R16
+;.ENDMACRO
 
-IN      R16, SREG   ; freeze status flags
-CLI
-
-; critical code
-LDS     R17, @0     ; save @0 to register
-LDI     R18, FALSE  ; reinit @0
-STS     @0, R18
-; end critical code
-
-OUT     SREG, R16   ; unfreeze status flags
-
-CPI     R17, TRUE   ; check if @0 is set
-BRNE    1f
-SEZ                 ; if set, return true
-JMP     2f
-
-1:
+LRSwitch:
+    PUSH    R16 ; save status flags
+    PUSH    R17 ; R LRSwitchPressed
+    PUSH    R18 ; W LRSwitchPressed
+    
+    IN      R16, SREG   ; freeze status flags
+    CLI
+    
+    ; critical code
+    LDS     R17, LRSwitchPressed     ; save LRSwitchPressed to register
+    LDI     R18, FALSE  ; reinit LRSwitchPressed
+    STS     LRSwitchPressed, R18
+    ; end critical code
+    
+    OUT     SREG, R16   ; unfreeze status flags
+    
+    CPI     R17, TRUE   ; check if LRSwitchPressed is set
+    BRNE    LRSWITCHPRESSED_NOT_SET
+    SEZ                 ; if set, return true
+    JMP     LRSwitch_RET
+    
+LRSWITCHPRESSED_NOT_SET:
     CLZ             ; if reset, return false
-2:
+LRSwitch_RET:
     POP     R18
     POP     R17
     POP     R16
-.ENDMACRO
-
-LRSwitch:
-    CheckSwitchAction   LRSwitchPressed
     RET
 
 UDSwitch:
-    CheckSwitchAction   UDSwitchPressed
+    PUSH    R16 ; save status flags
+    PUSH    R17 ; R UDSwitchPressed
+    PUSH    R18 ; W UDSwitchPressed
+    
+    IN      R16, SREG   ; freeze status flags
+    CLI
+    
+    ; critical code
+    LDS     R17, UDSwitchPressed     ; save UDSwitchPressed to register
+    LDI     R18, FALSE  ; reinit UDSwitchPressed
+    STS     UDSwitchPressed, R18
+    ; end critical code
+    
+    OUT     SREG, R16   ; unfreeze status flags
+    
+    CPI     R17, TRUE   ; check if UDSwitchPressed is set
+    BRNE    UDSWITCHPRESSED_NOT_SET
+    SEZ                 ; if set, return true
+    JMP     UDSwitch_RET
+UDSWITCHPRESSED_NOT_SET:
+    CLZ             ; if reset, return false
+UDSwitch_RET:
+    POP     R18
+    POP     R17
+    POP     R16
     RET
 
 LeftRot:
-    CheckSwitchAction   LRRotLeft
+    PUSH    R16 ; save status flags
+    PUSH    R17 ; R LRRotLeft
+    PUSH    R18 ; W LRRotLeft
+    
+    IN      R16, SREG   ; freeze status flags
+    CLI
+    
+    ; critical code
+    LDS     R17, LRRotLeft     ; save LRRotLeft to register
+    LDI     R18, FALSE  ; reinit LRRotLeft
+    STS     LRRotLeft, R18
+    ; end critical code
+    
+    OUT     SREG, R16   ; unfreeze status flags
+    
+    CPI     R17, TRUE   ; check if LRRotLeft is set
+    BRNE    LRROTLEFT_NOT_SET
+    SEZ                 ; if set, return true
+    JMP     LeftRot_RET
+LRROTLEFT_NOT_SET:
+    CLZ             ; if reset, return false
+LeftRot_RET:
+    POP     R18
+    POP     R17
+    POP     R16
     RET
 
 RightRot:
-    CheckSwitchAction   LRRotRight
+    PUSH    R16 ; save status flags
+    PUSH    R17 ; R LRRotRight
+    PUSH    R18 ; W LRRotRight
+    
+    IN      R16, SREG   ; freeze status flags
+    CLI
+    
+    ; critical code
+    LDS     R17, LRRotRight     ; save LRRotRight to register
+    LDI     R18, FALSE  ; reinit LRRotRight
+    STS     LRRotRight, R18
+    ; end critical code
+    
+    OUT     SREG, R16   ; unfreeze status flags
+    
+    CPI     R17, TRUE   ; check if LRRotRight is set
+    BRNE    LRROTRIGHT_NOT_SET
+    SEZ                 ; if set, return true
+    JMP     RightRot_RET
+LRROTRIGHT_NOT_SET:
+    CLZ             ; if reset, return false
+RightRot_RET:
+    POP     R18
+    POP     R17
+    POP     R16
     RET
 
 UpRot:
-    CheckSwitchAction   UDRotUp
+    PUSH    R16 ; save status flags
+    PUSH    R17 ; R UDRotUp
+    PUSH    R18 ; W UDRotUp
+    
+    IN      R16, SREG   ; freeze status flags
+    CLI
+    
+    ; critical code
+    LDS     R17, UDRotUp     ; save UDRotUp to register
+    LDI     R18, FALSE  ; reinit UDRotUp
+    STS     UDRotUp, R18
+    ; end critical code
+    
+    OUT     SREG, R16   ; unfreeze status flags
+    
+    CPI     R17, TRUE   ; check if UDRotUp is set
+    BRNE    UDROTUP_NOT_SET
+    SEZ                 ; if set, return true
+    JMP     UpRot_RET
+UDROTUP_NOT_SET:
+    CLZ             ; if reset, return false
+UpRot_RET:
+    POP     R18
+    POP     R17
+    POP     R16
     RET
 
 DownRot:
-    CheckSwitchAction   UDRotDown
+    PUSH    R16 ; save status flags
+    PUSH    R17 ; R UDRotDown
+    PUSH    R18 ; W UDRotDown
+    
+    IN      R16, SREG   ; freeze status flags
+    CLI
+    
+    ; critical code
+    LDS     R17, UDRotDown     ; save UDRotDown to register
+    LDI     R18, FALSE  ; reinit UDRotDown
+    STS     UDRotDown, R18
+    ; end critical code
+    
+    OUT     SREG, R16   ; unfreeze status flags
+    
+    CPI     R17, TRUE   ; check if UDRotDown is set
+    BRNE    UDROTDOWN_NOT_SET
+    SEZ                 ; if set, return true
+    JMP     DownRot_RET
+UDROTDOWN_NOT_SET:
+    CLZ             ; if reset, return false
+DownRot_RET:
+    POP     R18
+    POP     R17
+    POP     R16
     RET

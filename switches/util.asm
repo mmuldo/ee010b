@@ -1,4 +1,3 @@
-; test
 ; OUTI macro
 ; ==========
 ;
@@ -23,6 +22,8 @@ LDI     R16, @1
 OUT     @0, R16
 .ENDMACRO
 
+; NOTE: the following macros are commented out because the label jumping isn't
+; working as expected
 ; LSRK macro
 ; ==========
 ;
@@ -42,17 +43,17 @@ OUT     @0, R16
 ; Stack Depth
 ; -----------
 ; None
-.MACRO LSRK
-1:
-    LDI     R16, @1
-    CPI     R16, 0      ; check if K is 0
-    BREQ    2f          ; if so, we're done
-
-    LSR     @0
-    Dec     R16
-    JMP     1b
-2:
-.ENDMACRO
+;.MACRO LSRK
+;    LDI     R16, @1
+;1:
+;    CPI     R16, 0      ; check if K is 0
+;    BREQ    2f          ; if so, we're done
+;
+;    LSR     @0
+;    Dec     R16
+;    JMP     1b
+;2:
+;.ENDMACRO
 
 ; LSLK macro
 ; ==========
@@ -73,14 +74,14 @@ OUT     @0, R16
 ; Stack Depth
 ; -----------
 ; None
-.MACRO LSLK
-1:
-    LDI     R16, @1
-    CPI     R16, 0      ; check if K is 0
-    BREQ    2f          ; if so, we're done
-
-    LSL     @0
-    Dec     R16
-    JMP     1b
-2:
-.ENDMACRO
+;.MACRO LSLK
+;    LDI     R16, @1
+;1:
+;    CPI     R16, 0      ; check if K is 0
+;    BREQ    2f          ; if so, we're done
+;
+;    LSL     @0
+;    Dec     R16
+;    JMP     1b
+;2:
+;.ENDMACRO
