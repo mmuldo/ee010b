@@ -231,10 +231,12 @@ InitSwitchVars:
 ; DeRotLR()
 ; DeRotUD()
 SwitchEventHandler:
+    IN      R1, SREG
     RCALL   DebounceLR
     RCALL   DebounceUD
     RCALL   DeRotLR
     RCALL   DeRotUD
+    OUT     SREG, R1
     RETI
 
 ; DebounceLR Specificaiton

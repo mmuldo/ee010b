@@ -170,8 +170,7 @@ CheckLRSwitch:                  ;check LRSwitch function
         PUSH    R4              ;save buffer index around call to LRSwitch
         RCALL   LRSwitch        ;check for left/right switch
         POP     R4
-        ;BRNE    CheckUDSwitch   ;if none, check up/down switch
-        BRNE    SwitchTestLoop   ;if none, check up/down switch
+        BRNE    CheckUDSwitch   ;if none, check up/down switch
 
         LDI     R16, '2'        ;otherwise have a switch press
         RCALL   StoreBuff       ;store it in the buffer
@@ -179,112 +178,111 @@ CheckLRSwitch:                  ;check LRSwitch function
         PUSH    R4              ;save index while calling LRSwitch
         RCALL   LRSwitch        ;check for left/right switch again
         POP     R4              ;   (shouldn't be one)
-        BRNE    SwitchTestLoop   ;if none, don't write EE, just check next
-        ;BRNE    CheckUDSwitch   ;if none, don't write EE, just check next
+        BRNE    CheckUDSwitch   ;if none, don't write EE, just check next
 
         LDI     R16, 0xEE       ;otherwise have an erroneous press so write EE
         RCALL   StoreBuff
         ;RJMP   CheckUDSwitch
 
 
-;CheckUDSwitch:                  ;check UDSwitch function
-;
-;        PUSH    R4              ;save buffer index around call to UDSwitch
-;        RCALL   UDSwitch        ;check for up/down switch
-;        POP     R4
-;        BRNE    CheckRotLeft    ;if none, check left rotation
-;
-;        LDI     R16, '1'        ;otherwise have a switch press
-;        RCALL   StoreBuff       ;store it in the buffer
-;
-;        PUSH    R4              ;save index while calling UDSwitch
-;        RCALL   UDSwitch        ;check for up/down switch again
-;        POP     R4              ;   (shouldn't be one)
-;        BRNE    CheckRotLeft    ;if none, don't write EE, just check next
-;
-;        LDI     R16, 0xEE       ;otherwise spurious switch press so write EE
-;        RCALL   StoreBuff
-;        ;RJMP   CheckRotLeft
-;
-;
-;CheckRotLeft:                   ;check LeftRot function
-;
-;        PUSH    R4              ;save buffer index around call to LeftRot
-;        RCALL   LeftRot         ;check for left rotation
-;        POP     R4
-;        BRNE    CheckRotRight   ;if none, check right rotation
-;
-;        LDI     R16, 'L'        ;otherwise have a left rotation
-;        RCALL   StoreBuff       ;store it in the buffer
-;
-;        PUSH    R4              ;save index while calling LeftRot
-;        RCALL   LeftRot         ;check for left rotation again
-;        POP     R4              ;   (shouldn't be one)
-;        BRNE    CheckRotRight   ;if none, no error, just check next
-;
-;        LDI     R16, 0xEE       ;otherwise erroneous rotation so write EE
-;        RCALL   StoreBuff
-;        ;RJMP   CheckRotRight
-;
-;
-;CheckRotRight:                  ;check RightRot function
-;
-;        PUSH    R4              ;save buffer index around call to RightRot
-;        RCALL   RightRot        ;check for right rotation
-;        POP     R4
-;        BRNE    CheckRotUp      ;if none, check up rotation
-;
-;        LDI     R16, 'R'        ;otherwise have a right rotation
-;        RCALL   StoreBuff       ;store it in the buffer
-;
-;        PUSH    R4              ;save index while calling RightRot
-;        RCALL   RightRot        ;check for right rotation again
-;        POP     R4              ;   (shouldn't be one)
-;        BRNE    CheckRotUp      ;if none, no error so just check next
-;
-;        LDI     R16, 0xEE       ;otherwise have spurious rotation so write EE
-;        RCALL   StoreBuff
-;        ;RJMP   CheckRotUp
-;
-;
-;CheckRotUp:                     ;check UpRot function
-;
-;        PUSH    R4              ;save buffer index around call to UpRot
-;        RCALL   UpRot           ;check for up rotation
-;        POP     R4
-;        BRNE    CheckRotDown    ;if none, check down rotation
-;
-;        LDI     R16, 'U'        ;otherwise have an up rotation
-;        RCALL   StoreBuff       ;store it in the buffer
-;
-;        PUSH    R4              ;save index while calling UpRot
-;        RCALL   UpRot           ;check for up rotation again
-;        POP     R4              ;   (shouldn't be one)
-;        BRNE    CheckRotDown    ;if don't have one, no error so check next
-;
-;        LDI     R16, 0xEE       ;otherwise error in function so write EE
-;        RCALL   StoreBuff
-;        ;RJMP   CheckRotDown
-;
-;
-;CheckRotDown:                   ;check DownRot function
-;
-;        PUSH    R4              ;save buffer index around call to DownRot
-;        RCALL   DownRot         ;check for down rotation
-;        POP     R4
-;        BRNE    DoneCheckSw     ;if none, done checking switches
-;
-;        LDI     R16, 'D'        ;otherwise have a down rotation
-;        RCALL   StoreBuff       ;store it in the buffer
-;
-;        PUSH    R4              ;save index while calling DownRot
-;        RCALL   DownRot         ;check for down rotation again
-;        POP     R4              ;   (shouldn't be one)
-;        BRNE    DoneCheckSw     ;if none, don't write EE, and done
-;
-;        LDI     R16, 0xEE       ;otherwise function error so write EE
-;        RCALL   StoreBuff
-;        ;RJMP   DoneCheckSw
+CheckUDSwitch:                  ;check UDSwitch function
+
+        PUSH    R4              ;save buffer index around call to UDSwitch
+        RCALL   UDSwitch        ;check for up/down switch
+        POP     R4
+        BRNE    CheckRotLeft    ;if none, check left rotation
+
+        LDI     R16, '1'        ;otherwise have a switch press
+        RCALL   StoreBuff       ;store it in the buffer
+
+        PUSH    R4              ;save index while calling UDSwitch
+        RCALL   UDSwitch        ;check for up/down switch again
+        POP     R4              ;   (shouldn't be one)
+        BRNE    CheckRotLeft    ;if none, don't write EE, just check next
+
+        LDI     R16, 0xEE       ;otherwise spurious switch press so write EE
+        RCALL   StoreBuff
+        ;RJMP   CheckRotLeft
+
+
+CheckRotLeft:                   ;check LeftRot function
+
+        PUSH    R4              ;save buffer index around call to LeftRot
+        RCALL   LeftRot         ;check for left rotation
+        POP     R4
+        BRNE    CheckRotRight   ;if none, check right rotation
+
+        LDI     R16, 'L'        ;otherwise have a left rotation
+        RCALL   StoreBuff       ;store it in the buffer
+
+        PUSH    R4              ;save index while calling LeftRot
+        RCALL   LeftRot         ;check for left rotation again
+        POP     R4              ;   (shouldn't be one)
+        BRNE    CheckRotRight   ;if none, no error, just check next
+
+        LDI     R16, 0xEE       ;otherwise erroneous rotation so write EE
+        RCALL   StoreBuff
+        ;RJMP   CheckRotRight
+
+
+CheckRotRight:                  ;check RightRot function
+
+        PUSH    R4              ;save buffer index around call to RightRot
+        RCALL   RightRot        ;check for right rotation
+        POP     R4
+        BRNE    CheckRotUp      ;if none, check up rotation
+
+        LDI     R16, 'R'        ;otherwise have a right rotation
+        RCALL   StoreBuff       ;store it in the buffer
+
+        PUSH    R4              ;save index while calling RightRot
+        RCALL   RightRot        ;check for right rotation again
+        POP     R4              ;   (shouldn't be one)
+        BRNE    CheckRotUp      ;if none, no error so just check next
+
+        LDI     R16, 0xEE       ;otherwise have spurious rotation so write EE
+        RCALL   StoreBuff
+        ;RJMP   CheckRotUp
+
+
+CheckRotUp:                     ;check UpRot function
+
+        PUSH    R4              ;save buffer index around call to UpRot
+        RCALL   UpRot           ;check for up rotation
+        POP     R4
+        BRNE    CheckRotDown    ;if none, check down rotation
+
+        LDI     R16, 'U'        ;otherwise have an up rotation
+        RCALL   StoreBuff       ;store it in the buffer
+
+        PUSH    R4              ;save index while calling UpRot
+        RCALL   UpRot           ;check for up rotation again
+        POP     R4              ;   (shouldn't be one)
+        BRNE    CheckRotDown    ;if don't have one, no error so check next
+
+        LDI     R16, 0xEE       ;otherwise error in function so write EE
+        RCALL   StoreBuff
+        ;RJMP   CheckRotDown
+
+
+CheckRotDown:                   ;check DownRot function
+
+        PUSH    R4              ;save buffer index around call to DownRot
+        RCALL   DownRot         ;check for down rotation
+        POP     R4
+        BRNE    DoneCheckSw     ;if none, done checking switches
+
+        LDI     R16, 'D'        ;otherwise have a down rotation
+        RCALL   StoreBuff       ;store it in the buffer
+
+        PUSH    R4              ;save index while calling DownRot
+        RCALL   DownRot         ;check for down rotation again
+        POP     R4              ;   (shouldn't be one)
+        BRNE    DoneCheckSw     ;if none, don't write EE, and done
+
+        LDI     R16, 0xEE       ;otherwise function error so write EE
+        RCALL   StoreBuff
+        ;RJMP   DoneCheckSw
 
 
 DoneCheckSw:                    ;done checking switch functions
