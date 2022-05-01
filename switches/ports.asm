@@ -1,6 +1,8 @@
 ; utility macros
 ;.include "util.asm"
 
+.CSEG
+
 ; InitSwitchPort Specification
 ; ============================
 ;

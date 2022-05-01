@@ -1,6 +1,3 @@
-.include "util.inc"
-;.include "util.asm"
-
 .DSEG
     LRSwitchPressed:    .BYTE 1 ; bool indicating LR switch has been pressed
     UDSwitchPressed:    .BYTE 1 ; bool indicating UD switch has been pressed 

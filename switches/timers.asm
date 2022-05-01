@@ -1,8 +1,7 @@
 ; utility macros
 ;.include "util.asm"
 
-; constants for timers
-.include "timers.inc"
+.CSEG
 
 ; InitTimer0 Specification
 ; ============================
