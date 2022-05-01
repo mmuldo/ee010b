@@ -980,21 +980,21 @@ DeRotUD_RET:
 
 LRSwitch:
     PUSH    R0 ; save status flags
-    PUSH    R18 ; R LRSwitchPressed
-    PUSH    R19 ; W LRSwitchPressed
+    PUSH    R21 ; R LRSwitchPressed
+    PUSH    R22 ; W LRSwitchPressed
     
     IN      R0, SREG   ; freeze status flags
     CLI
     
     ; critical code
-    LDS     R18, LRSwitchPressed     ; save LRSwitchPressed to register
-    LDI     R19, FALSE  ; reinit LRSwitchPressed
-    STS     LRSwitchPressed, R19
+    LDS     R21, LRSwitchPressed     ; save LRSwitchPressed to register
+    LDI     R22, FALSE  ; reinit LRSwitchPressed
+    STS     LRSwitchPressed, R22
     ; end critical code
     
     OUT     SREG, R0   ; unfreeze status flags
     
-    CPI     R18, TRUE   ; check if LRSwitchPressed is set
+    CPI     R21, TRUE   ; check if LRSwitchPressed is set
     BRNE    LRSWITCHPRESSED_NOT_SET
     SEZ                 ; if set, return true
     JMP     LRSwitch_RET
@@ -1002,147 +1002,147 @@ LRSwitch:
 LRSWITCHPRESSED_NOT_SET:
     CLZ             ; if reset, return false
 LRSwitch_RET:
-    POP     R19
-    POP     R18
+    POP     R22
+    POP     R21
     POP     R0
     RET
 
 UDSwitch:
     PUSH    R0 ; save status flags
-    PUSH    R18 ; R UDSwitchPressed
-    PUSH    R19 ; W UDSwitchPressed
+    PUSH    R21 ; R UDSwitchPressed
+    PUSH    R22 ; W UDSwitchPressed
     
     IN      R0, SREG   ; freeze status flags
     CLI
     
     ; critical code
-    LDS     R18, UDSwitchPressed     ; save UDSwitchPressed to register
-    LDI     R19, FALSE  ; reinit UDSwitchPressed
-    STS     UDSwitchPressed, R19
+    LDS     R21, UDSwitchPressed     ; save UDSwitchPressed to register
+    LDI     R22, FALSE  ; reinit UDSwitchPressed
+    STS     UDSwitchPressed, R22
     ; end critical code
     
     OUT     SREG, R0   ; unfreeze status flags
     
-    CPI     R18, TRUE   ; check if UDSwitchPressed is set
+    CPI     R21, TRUE   ; check if UDSwitchPressed is set
     BRNE    UDSWITCHPRESSED_NOT_SET
     SEZ                 ; if set, return true
     JMP     UDSwitch_RET
 UDSWITCHPRESSED_NOT_SET:
     CLZ             ; if reset, return false
 UDSwitch_RET:
-    POP     R19
-    POP     R18
+    POP     R22
+    POP     R21
     POP     R0
     RET
 
 LeftRot:
     PUSH    R0 ; save status flags
-    PUSH    R18 ; R LRRotLeft
-    PUSH    R19 ; W LRRotLeft
+    PUSH    R21 ; R LRRotLeft
+    PUSH    R22 ; W LRRotLeft
     
     IN      R0, SREG   ; freeze status flags
     CLI
     
     ; critical code
-    LDS     R18, LRRotLeft     ; save LRRotLeft to register
-    LDI     R19, FALSE  ; reinit LRRotLeft
-    STS     LRRotLeft, R19
+    LDS     R21, LRRotLeft     ; save LRRotLeft to register
+    LDI     R22, FALSE  ; reinit LRRotLeft
+    STS     LRRotLeft, R22
     ; end critical code
     
     OUT     SREG, R0   ; unfreeze status flags
     
-    CPI     R18, TRUE   ; check if LRRotLeft is set
+    CPI     R21, TRUE   ; check if LRRotLeft is set
     BRNE    LRROTLEFT_NOT_SET
     SEZ                 ; if set, return true
     JMP     LeftRot_RET
 LRROTLEFT_NOT_SET:
     CLZ             ; if reset, return false
 LeftRot_RET:
-    POP     R19
-    POP     R18
+    POP     R22
+    POP     R21
     POP     R0
     RET
 
 RightRot:
     PUSH    R0 ; save status flags
-    PUSH    R18 ; R LRRotRight
-    PUSH    R19 ; W LRRotRight
+    PUSH    R21 ; R LRRotRight
+    PUSH    R22 ; W LRRotRight
     
     IN      R0, SREG   ; freeze status flags
     CLI
     
     ; critical code
-    LDS     R18, LRRotRight     ; save LRRotRight to register
-    LDI     R19, FALSE  ; reinit LRRotRight
-    STS     LRRotRight, R19
+    LDS     R21, LRRotRight     ; save LRRotRight to register
+    LDI     R22, FALSE  ; reinit LRRotRight
+    STS     LRRotRight, R22
     ; end critical code
     
     OUT     SREG, R0   ; unfreeze status flags
     
-    CPI     R18, TRUE   ; check if LRRotRight is set
+    CPI     R21, TRUE   ; check if LRRotRight is set
     BRNE    LRROTRIGHT_NOT_SET
     SEZ                 ; if set, return true
     JMP     RightRot_RET
 LRROTRIGHT_NOT_SET:
     CLZ             ; if reset, return false
 RightRot_RET:
-    POP     R19
-    POP     R18
+    POP     R22
+    POP     R21
     POP     R0
     RET
 
 UpRot:
     PUSH    R0 ; save status flags
-    PUSH    R18 ; R UDRotUp
-    PUSH    R19 ; W UDRotUp
+    PUSH    R21 ; R UDRotUp
+    PUSH    R22 ; W UDRotUp
     
     IN      R0, SREG   ; freeze status flags
     CLI
     
     ; critical code
-    LDS     R18, UDRotUp     ; save UDRotUp to register
-    LDI     R19, FALSE  ; reinit UDRotUp
-    STS     UDRotUp, R19
+    LDS     R21, UDRotUp     ; save UDRotUp to register
+    LDI     R22, FALSE  ; reinit UDRotUp
+    STS     UDRotUp, R22
     ; end critical code
     
     OUT     SREG, R0   ; unfreeze status flags
     
-    CPI     R18, TRUE   ; check if UDRotUp is set
+    CPI     R21, TRUE   ; check if UDRotUp is set
     BRNE    UDROTUP_NOT_SET
     SEZ                 ; if set, return true
     JMP     UpRot_RET
 UDROTUP_NOT_SET:
     CLZ             ; if reset, return false
 UpRot_RET:
-    POP     R19
-    POP     R18
+    POP     R22
+    POP     R21
     POP     R0
     RET
 
 DownRot:
     PUSH    R0 ; save status flags
-    PUSH    R18 ; R UDRotDown
-    PUSH    R19 ; W UDRotDown
+    PUSH    R21 ; R UDRotDown
+    PUSH    R22 ; W UDRotDown
     
     IN      R0, SREG   ; freeze status flags
     CLI
     
     ; critical code
-    LDS     R18, UDRotDown     ; save UDRotDown to register
-    LDI     R19, FALSE  ; reinit UDRotDown
-    STS     UDRotDown, R19
+    LDS     R21, UDRotDown     ; save UDRotDown to register
+    LDI     R22, FALSE  ; reinit UDRotDown
+    STS     UDRotDown, R22
     ; end critical code
     
     OUT     SREG, R0   ; unfreeze status flags
     
-    CPI     R18, TRUE   ; check if UDRotDown is set
+    CPI     R21, TRUE   ; check if UDRotDown is set
     BRNE    UDROTDOWN_NOT_SET
     SEZ                 ; if set, return true
     JMP     DownRot_RET
 UDROTDOWN_NOT_SET:
     CLZ             ; if reset, return false
 DownRot_RET:
-    POP     R19
-    POP     R18
+    POP     R22
+    POP     R21
     POP     R0
     RET
