@@ -596,10 +596,9 @@ DeRotLR:
         JMP     LRROT_LSR
     LRROT_LSR_DONE:
 
+    LDS     R19, LRGrayCodeStack    
     CPI     R17, 0b00000011     ; check if on detent
     BRNE    LR_STACK_UPDATE
-
-    LDS     R19, LRGrayCodeStack    
                                     
 
     CPI     R19, GRAYCODE_CCW_FULL ; if on detent, check if 
@@ -806,11 +805,9 @@ DeRotUD:
         JMP     UDROT_LSR
     UDROT_LSR_DONE:
 
+    LDS     R19, UDGrayCodeStack    
     CPI     R17, 0b00000011     ; check if on detent
     BRNE    UD_STACK_UPDATE
-
-    LDS     R19, UDGrayCodeStack    
-                                    
 
     CPI     R19, GRAYCODE_CCW_FULL ; if on detent, check if 
                                                     ; graycode stack 
