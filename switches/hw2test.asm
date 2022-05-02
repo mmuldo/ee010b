@@ -1,4 +1,3 @@
-; TODO: description/revision history, etc.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;                                                                            ;
 ;                                   HW2TEST                                  ;
@@ -29,6 +28,9 @@
 ;    5/02/18  Glen George               initial revision
 ;    4/06/22  Glen George               changed output format to only store an
 ;                                          extra byte when there is an error
+;    4/27/22  Matt Muldowney            downloaded
+;    4/28/22  Matt Muldowney            included constituent files
+;    4/28/22  Matt Muldowney            call init functions
 
 
 

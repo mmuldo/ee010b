@@ -49,10 +49,11 @@
 ; ----------------
 ; 04/28/2022    Matt Muldowney      initial revision
 ; 04/28/2022    Matt Muldowney      fixed syntax errors
-; 04/28/2022    Matt Muldowney      commented out macros bc they don't work :(
+; 04/28/2022    Matt Muldowney      got rid of macros bc they don't work :(
 ; 04/28/2022    Matt Muldowney      changed registers in certain functions to
 ;                                       avoid register collisions
 ; 04/28/2022    Matt Muldowney      push and pop SREG in SwitchEventHandler
+; 04/28/2022    Matt Muldowney      docs
 
 .DSEG
     LRSwitchPressed:    .BYTE 1 ; bool indicating LR switch has been pressed
@@ -346,36 +347,48 @@ DebounceLR:
     PUSH    R16 ; used for PinE reading and LRSwitchCounter RW
     PUSH    R17 ; used for LRSwitchPressed writing
 
+    ; get L/R switch press status from PortE
     IN      R16, PinE
     ANDI    R16, PORTE_LRSWITCH_MSK
 
-    CPI     R16, PORTE_LRSWITCH_MSK ; check if LR is not pressed (== 1)
+    ; check if LR is not pressed (1 --> not pressed; 0 --> pressed)
+    CPI     R16, PORTE_LRSWITCH_MSK
     BREQ    LR_NOT_PRESSED
 
+    ; if presesd, check if LR counter is still at 0
+    ; if it is, nothing more to do, so just return
     LDS     R16, LRSwitchCounter
-    CPI     R16, 0                  ; check if LR switch counter is still at 0
-    BREQ    DebounceLR_RET          ; if so, then nothing to do
+    CPI     R16, 0
+    BREQ    DebounceLR_RET
 
-    CPI     R16, 1                  ; check if LR switch counter is at 1
-    BRNE    LR_COUNT_NOT_0_OR_1     ; if not, need to keep decrementing
-    LDI     R17, TRUE               ; if it is, register a switch press since
-                                        ; the next decrement will put it at 0
+    ; check if LR counter is at 1
+    ; if it is, register a switch press, since next decrement will put
+    ;   counter at 0.
+    ; if not, need to keep decrementing
+    CPI     R16, 1
+    BRNE    LR_COUNT_NOT_0_OR_1
+    LDI     R17, TRUE
     STS     LRSwitchPressed, R17
 
 LR_COUNT_NOT_0_OR_1:
-    DEC     R16                     ; NOTE: this gets run as long as LR switch
-                                        ; counter is not already at 0
+    ; if LR is pressed but >= 1, decrement and return
+    DEC     R16
     STS     LRSwitchCounter, R16
     JMP     DebounceLR_RET
 
 LR_NOT_PRESSED:
-    LDI     R16, SWITCH_COUNTER_INIT ; re-init LR switch counter
+    ; if LR not pressed, re-init LR switch counter
+    LDI     R16, SWITCH_COUNTER_INIT
     STS     LRSwitchCounter, R16
         
 DebounceLR_RET:
     POP     R17
     POP     R16
     RET
+
+
+
+
 
 ; DebounceUD Specificaiton
 ; ========================
@@ -443,55 +456,53 @@ DebounceLR_RET:
 ; Special Notes
 ; -------------
 ; None
-;
-; Pseudocode
-; ----------
-; IF PortE[5] == 1:
-;   IF UDSwitchCounter == 0:
-;       UDSwitchCounter = 0
-;   ELSE IF UDSwitchCounter == 1:
-;       UDSwitchPressed = 1
-;       UDSwitchCounter--
-;   ELSE:
-;       UDSwitchCounter--
-;   ENDIF
-; ELSE:
-;   UDSwitchCounter = 20
-; ENDIF
 DebounceUD:
     PUSH    R16 ; used for PinE reading and UDSwitchCounter RW
     PUSH    R17 ; used for UDSwitchPressed writing
 
+    ; get U/D switch press status from PortE
     IN      R16, PinE
     ANDI    R16, PORTE_UDSWITCH_MSK
 
-    CPI     R16, PORTE_UDSWITCH_MSK ; check if UD is not pressed (== 1)
+    ; check if LR is not pressed (1 --> not pressed; 0 --> pressed)
+    CPI     R16, PORTE_UDSWITCH_MSK
     BREQ    UD_NOT_PRESSED
 
+    ; if presesd, check if LR counter is still at 0
+    ; if it is, nothing more to do, so just return
     LDS     R16, UDSwitchCounter
-    CPI     R16, 0                  ; check if UD switch counter is still at 0
-    BREQ    DebounceUD_RET          ; if so, then nothing to do
+    CPI     R16, 0
+    BREQ    DebounceUD_RET
 
-    CPI     R16, 1                  ; check if UD switch counter is at 1
-    BRNE    UD_COUNT_NOT_0_OR_1     ; if not, need to keep decrementing
-    LDI     R17, TRUE               ; if it is, register a switch press since
-                                        ; the next decrement will put it at 0
+    ; check if UD counter is at 1
+    ; if it is, register a switch press, since next decrement will put
+    ;   counter at 0.
+    ; if not, need to keep decrementing
+    CPI     R16, 1
+    BRNE    UD_COUNT_NOT_0_OR_1
+    LDI     R17, TRUE
     STS     UDSwitchPressed, R17
 
 UD_COUNT_NOT_0_OR_1:
-    DEC     R16                     ; NOTE: this gets run as long as UD switch
-                                        ; counter is not already at 0
+    ; if UD is pressed but >= 1, decrement and return
+    DEC     R16
     STS     UDSwitchCounter, R16
     JMP     DebounceUD_RET
 
 UD_NOT_PRESSED:
-    LDI     R16, SWITCH_COUNTER_INIT ; re-init UD switch counter
+    ; if UD not pressed, re-init LR switch counter
+    LDI     R16, SWITCH_COUNTER_INIT
     STS     UDSwitchCounter, R16
         
 DebounceUD_RET:
     POP     R17
     POP     R16
     RET
+
+
+
+
+
 
 ; DeRotLR Specification
 ; =======================
@@ -613,76 +624,80 @@ DeRotLR:
     IN      R17, PinE
     ANDI    R17, PORTE_LRROT_MSK
 
-    ; if macro ever gets working, uncomment this
-    ;LSRK    R17, PORTE_LRROT_SHIFT
+    ; shift the graycode reading down so that it's sitting in the bottom
+    ;   2 bits
     LDI     R16, PORTE_LRROT_SHIFT
     LRROT_LSR:
-        CPI     R16, 0      ; check if K is 0
-        BREQ    LRROT_LSR_DONE  ; if so, we're done
-    
+        CPI     R16, 0
+        BREQ    LRROT_LSR_DONE
         LSR     R17
         Dec     R16
         JMP     LRROT_LSR
     LRROT_LSR_DONE:
 
+    ; get graycode stack
     LDS     R19, LRGrayCodeStack    
-    CPI     R17, 0b00000011     ; check if on detent
-    BRNE    LR_STACK_UPDATE
-                                    
 
-    CPI     R19, GRAYCODE_CCW_FULL ; if on detent, check if 
-                                                    ; graycode stack 
-                                                    ; is ccw full
+    ; check if on detent
+    ; if we're not, can't have done a full turn yet, so go to stack update
+    ;   section.
+    CPI     R17, 0b00000011
+    BRNE    LR_STACK_UPDATE
+
+    ; if on detent, check if graycode stack is ccw full
+    CPI     R19, GRAYCODE_CCW_FULL
     BRNE    LR_CHECK_CW_FULL                       
-    LDI     R18, TRUE               ; if ccw full, register left rot
+
+    ; if ccw full, register left rotation and re-init graycode stack
+    ; then return
+    LDI     R18, TRUE
     STS     LRRotLeft, R18
-    LDI     R19, GRAYCODE_STACK_INIT ; reinit graycode stack
+    LDI     R19, GRAYCODE_STACK_INIT
     STS     LRGrayCodeStack, R19
     JMP     DeRotLR_RET
 
 LR_CHECK_CW_FULL:
-    CPI     R19, GRAYCODE_CW_FULL ; if on detent, and 
-                                                    ; not ccw full, check if 
-                                                    ; graycode stack 
-                                                    ; is cw full
+    ; if on detent and not ccw full, check if graycode stack is cw full
+    CPI     R19, GRAYCODE_CW_FULL
     BRNE    LR_STACK_UPDATE
-    LDI     R18, TRUE               ; if cw full, register right rot
+
+    ; if cw full, register right rotation and reinit graycode stack
+    ; then return
+    LDI     R18, TRUE
     STS     LRRotRight, R18
-    LDI     R19, GRAYCODE_STACK_INIT ; reinit graycode stack
+    LDI     R19, GRAYCODE_STACK_INIT
     STS     LRGrayCodeStack, R19
     JMP     DeRotLR_RET
 
 LR_STACK_UPDATE:
-    MOV     R20, R19         ; get LRGrayCodeStack[3, 2] (2nd to last gray
-                                ; code)
+    ; get 2nd most recent seen gray code
+    MOV     R20, R19
     ANDI    R20, 0b00001100
-
-    ; uncomment if this macro ever gets working
-    ;LSRK    R20, 2
+    ; shift down so that it's sitting in the bottom 2 bits
     LSR     R20
     LSR     R20
 
-    CP      R20, R17            ; check if current gray code is equal to the
-                                    ; 2nd to last gray code
+    ; check if current gray code is equal to the 2nd to last gray code
+    CP      R20, R17
     BRNE    LR_CHECK_STACK_PREV
 
-    ; uncomment if macro gets working
-    ;LSRK    R19, 2
-    LSR     R19                 ; if it is the 2nd to last gray code,
-    LSR     R19                    ; pop previous gray code off stack
+    ; if it is, pop the previous gray code off stack
+    LSR     R19
+    LSR     R19
     STS     LRGrayCodeStack, R19
     JMP     DeRotLR_RET
 
 LR_CHECK_STACK_PREV:
-    MOV     R20, R19         ; get LRGrayCodeStack[1, 0] (previous gray code)
+    ; get previously seen gray code
+    MOV     R20, R19
     ANDI    R20, 0b00000011
 
-    CP      R20, R17            ; check if current gray code is equal to the
-                                    ; previous graycode
+    ; check if current gray code is equal to previous graycode
+    CP      R20, R17
     BREQ    DeRotLR_RET
-    ; uncomment if this macro ever gets working
-    ; LSLK    R19, 2                  ; if it isn't the previous gray code,
-                                        ; push current graycode onto stack
+
+    ; if the current gray code isn't the previous graycode, push the current
+    ;   gray code onto the stack
     LSL     R19
     LSL     R19
     ADD     R19, R17
@@ -694,6 +709,11 @@ DeRotLR_RET:
     POP     R18
     POP     R17
     RET
+
+
+
+
+
 
 ; DeRotUD Specification
 ; =======================
@@ -822,74 +842,82 @@ DeRotUD:
     ; read in UD rotary encoder graycode
     IN      R17, PinE
     ANDI    R17, PORTE_UDROT_MSK
-    ; uncomment if this macro ever gets working
-    ;LSRK    R17, PORTE_UDROT_SHIFT
+
+    ; shift the graycode reading down so that it's sitting in the bottom
+    ;   2 bits
     LDI     R16, PORTE_UDROT_SHIFT
     UDROT_LSR:
-        CPI     R16, 0      ; check if K is 0
-        BREQ    UDROT_LSR_DONE  ; if so, we're done
-    
+        CPI     R16, 0
+        BREQ    UDROT_LSR_DONE
         LSR     R17
         Dec     R16
         JMP     UDROT_LSR
     UDROT_LSR_DONE:
 
+    ; get graycode stack
     LDS     R19, UDGrayCodeStack    
-    CPI     R17, 0b00000011     ; check if on detent
+
+    ; check if on detent
+    ; if we're not, can't have done a full turn yet, so go to stack update
+    ;   section.
+    CPI     R17, 0b00000011
     BRNE    UD_STACK_UPDATE
 
-    CPI     R19, GRAYCODE_CCW_FULL ; if on detent, check if 
-                                                    ; graycode stack 
-                                                    ; is ccw full
+    ; if on detent, check if graycode stack is ccw full
+    CPI     R19, GRAYCODE_CCW_FULL
     BRNE    UD_CHECK_CW_FULL                       
-    LDI     R18, TRUE               ; if ccw full, register up rot
+
+    ; if ccw full, register left rotation and re-init graycode stack
+    ; then return
+    LDI     R18, TRUE
     STS     UDRotUp, R18
-    LDI     R19, GRAYCODE_STACK_INIT ; reinit graycode stack
+    LDI     R19, GRAYCODE_STACK_INIT
     STS     UDGrayCodeStack, R19
     JMP     DeRotUD_RET
 
 UD_CHECK_CW_FULL:
-    CPI     R19, GRAYCODE_CW_FULL ; if on detent, and 
-                                                    ; not ccw full, check if 
-                                                    ; graycode stack 
-                                                    ; is cw full
+    ; if on detent and not ccw full, check if graycode stack is cw full
+    CPI     R19, GRAYCODE_CW_FULL
     BRNE    UD_STACK_UPDATE
-    LDI     R18, TRUE               ; if cw full, register down rot
+
+    ; if cw full, register right rotation and reinit graycode stack
+    ; then return
+    LDI     R18, TRUE
     STS     UDRotDown, R18
-    LDI     R19, GRAYCODE_STACK_INIT ; reinit graycode stack
+    LDI     R19, GRAYCODE_STACK_INIT
     STS     UDGrayCodeStack, R19
     JMP     DeRotUD_RET
 
 UD_STACK_UPDATE:
-    MOV     R20, R19         ; get UDGrayCodeStack[3, 2] (2nd to last gray
-                                ; code)
+    ; get 2nd most recent seen gray code
+    MOV     R20, R19
     ANDI    R20, 0b00001100
-    ; uncomment if this ever gets working
-    ;LSRK    R20, 2
+    ; shift down so that it's sitting in the bottom 2 bits
     LSR     R20
     LSR     R20
 
-    CP      R20, R17            ; check if current gray code is equal to the
-                                    ; 2nd to last gray code
+    ; check if current gray code is equal to the 2nd to last gray code
+    CP      R20, R17
     BRNE    UD_CHECK_STACK_PREV
-    ; uncomment if this ever gets working
-    ;LSRK    R19, 2                  ; if it is the 2nd to last gray code,
+
+    ; if it is, pop the previous gray code off stack
+    ; then return
     LSR     R19
     LSR     R19
-                                        ; pop previous gray code off stack
     STS     UDGrayCodeStack, R19
     JMP     DeRotUD_RET
 
 UD_CHECK_STACK_PREV:
-    MOV     R20, R19         ; get UDGrayCodeStack[1, 0] (previous gray code)
+    ; get previously seen gray code
+    MOV     R20, R19
     ANDI    R20, 0b00000011
 
-    CP      R20, R17            ; check if current gray code is equal to the
-                                    ; previous graycode
+    ; check if current gray code is equal to previous graycode
+    CP      R20, R17
     BREQ    DeRotUD_RET
-    ; uncomment if ever gets working
-    ;LSLK    R19, 2                  ; if it isn't the previous gray code,
-                                        ; push current graycode onto stack
+
+    ; if the current gray code isn't the previous graycode, push the current
+    ;   gray code onto the stack
     LSL     R19
     LSL     R19
     ADD     R19, R17
@@ -902,29 +930,28 @@ DeRotUD_RET:
     POP     R17
     RET
 
-; CheckSwitchAction macro
+; LRSwitch specification
 ; =====================
 ; 
 ; Description
 ; -----------
-; indicates if a boolean shared var (@0) is set or reset
+; indicates if a LR switch has been pressed
 ; 
 ; Operational Description
 ; -----------------------
-; Returns `TRUE` (i.e. sets the zero flag) if the has been set since the last
-; time this was called;
-; otherwise,
-; returns `FALSE` (i.e. resets the zero flag).
-; Resets @0.
+; Returns `TRUE` (i.e. sets the zero flag) if the has been pressed since 
+; the last time this was called;
+; otherwise, returns `FALSE` (i.e. resets the zero flag).
+; Resets LRSwitchPressed.
 ; 
 ; Arguments
 ; ---------
-; @0 (boolean shared var): RW
+; None
 ; 
 ; Return Values
 ; -------------
-; If @0 is high, return `TRUE` (zero flag set);
-; if @0 is low, return `FALSE` (zero flag reset).
+; If LRSwitchPressed is high, return `TRUE` (zero flag set);
+; if LRSwitchPressed is low, return `FALSE` (zero flag reset).
 ; 
 ; Global Variables
 ; ----------------
@@ -932,7 +959,7 @@ DeRotUD_RET:
 ; 
 ; Shared Variables
 ; ----------------
-; None (although functions using this macro RW @0, which is a shared var)
+; LRSwitchPressed (bool): RW
 ; 
 ; Local Variables
 ; ---------------
@@ -972,203 +999,608 @@ DeRotUD_RET:
 ; 
 ; Known Bugs
 ; ----------
-; This doesn't work because of label issues, so commented out for now
+; None
 ; 
 ; Special Notes
 ; -------------
 ; None
-;.MACRO CheckSwitchAction
-;PUSH    R16 ; save status flags
-;PUSH    R17 ; R @0
-;PUSH    R18 ; W @0
-;
-;IN      R16, SREG   ; freeze status flags
-;CLI
-;
-;; critical code
-;LDS     R17, @0     ; save @0 to register
-;LDI     R18, FALSE  ; reinit @0
-;STS     @0, R18
-;; end critical code
-;
-;OUT     SREG, R16   ; unfreeze status flags
-;
-;CPI     R17, TRUE   ; check if @0 is set
-;BRNE    1f
-;SEZ                 ; if set, return true
-;JMP     2f
-;
-;1:
-;    CLZ             ; if reset, return false
-;2:
-;    POP     R18
-;    POP     R17
-;    POP     R16
-;.ENDMACRO
-
 LRSwitch:
     PUSH    R0 ; save status flags
     PUSH    R21 ; R LRSwitchPressed
     PUSH    R22 ; W LRSwitchPressed
     
-    IN      R0, SREG   ; freeze status flags
+    ; freeze status flags and stop interrupts
+    IN      R0, SREG
     CLI
     
     ; critical code
-    LDS     R21, LRSwitchPressed     ; save LRSwitchPressed to register
-    LDI     R22, FALSE  ; reinit LRSwitchPressed
+    ; save LRSwitchPressed to register and reset it
+    LDS     R21, LRSwitchPressed
+    LDI     R22, FALSE
     STS     LRSwitchPressed, R22
     ; end critical code
     
-    OUT     SREG, R0   ; unfreeze status flags
+    ; unfreeze status flags
+    OUT     SREG, R0
     
-    CPI     R21, TRUE   ; check if LRSwitchPressed is set
+    ; check if LRSwitchPressed is set
+    CPI     R21, TRUE
     BRNE    LRSWITCHPRESSED_NOT_SET
-    SEZ                 ; if set, return true
+
+    ; if set, return true
+    SEZ
     JMP     LRSwitch_RET
     
 LRSWITCHPRESSED_NOT_SET:
-    CLZ             ; if reset, return false
+    ; if reset, return false
+    CLZ
+
 LRSwitch_RET:
     POP     R22
     POP     R21
     POP     R0
     RET
 
+
+
+
+
+
+; UDSwitch specification
+; =====================
+; 
+; Description
+; -----------
+; indicates if a UD switch has been pressed
+; 
+; Operational Description
+; -----------------------
+; Returns `TRUE` (i.e. sets the zero flag) if the has been pressed since 
+; the last time this was called;
+; otherwise, returns `FALSE` (i.e. resets the zero flag).
+; Resets UDSwitchPressed.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; If UDSwitchPressed is high, return `TRUE` (zero flag set);
+; if UDSwitchPressed is low, return `FALSE` (zero flag reset).
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; UDSwitchPressed (bool): RW
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 3 bytes
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
 UDSwitch:
     PUSH    R0 ; save status flags
     PUSH    R21 ; R UDSwitchPressed
     PUSH    R22 ; W UDSwitchPressed
     
-    IN      R0, SREG   ; freeze status flags
+    ; freeze status flags and stop interrupts
+    IN      R0, SREG
     CLI
     
     ; critical code
-    LDS     R21, UDSwitchPressed     ; save UDSwitchPressed to register
-    LDI     R22, FALSE  ; reinit UDSwitchPressed
+    ; save UDSwitchPressed to register and reset it
+    LDS     R21, UDSwitchPressed
+    LDI     R22, FALSE
     STS     UDSwitchPressed, R22
     ; end critical code
     
-    OUT     SREG, R0   ; unfreeze status flags
-    
-    CPI     R21, TRUE   ; check if UDSwitchPressed is set
+    ; unfreeze status flags
+    OUT     SREG, R0
+
+    ; check if UDSwitchPressed is set
+    CPI     R21, TRUE
     BRNE    UDSWITCHPRESSED_NOT_SET
-    SEZ                 ; if set, return true
+
+    ; if set, return true
+    SEZ
     JMP     UDSwitch_RET
 UDSWITCHPRESSED_NOT_SET:
-    CLZ             ; if reset, return false
+    ; if reset, return false
+    CLZ
+
 UDSwitch_RET:
     POP     R22
     POP     R21
     POP     R0
     RET
 
+
+
+
+
+; LeftRot specification
+; =====================
+; 
+; Description
+; -----------
+; indicates if the LR rotary encoder has been turned left
+; 
+; Operational Description
+; -----------------------
+; Returns `TRUE` (i.e. sets the zero flag) if the LR rotary encoder has 
+; been turned since the last time this was called;
+; otherwise, returns `FALSE` (i.e. resets the zero flag).
+; Resets LRRotLeft.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; If LRRotLeft is high, return `TRUE` (zero flag set);
+; if LRRotLeft is low, return `FALSE` (zero flag reset).
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; LRRotLeft (bool): RW
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 3 bytes
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
 LeftRot:
     PUSH    R0 ; save status flags
     PUSH    R21 ; R LRRotLeft
     PUSH    R22 ; W LRRotLeft
     
-    IN      R0, SREG   ; freeze status flags
+    ; freeze status flags and stop interrupts
+    IN      R0, SREG
     CLI
     
     ; critical code
-    LDS     R21, LRRotLeft     ; save LRRotLeft to register
-    LDI     R22, FALSE  ; reinit LRRotLeft
+    ; save LRRotLeft to register and reset it
+    LDS     R21, LRRotLeft
+    LDI     R22, FALSE
     STS     LRRotLeft, R22
     ; end critical code
+
+    ; unfreeze status flags
+    OUT     SREG, R0
     
-    OUT     SREG, R0   ; unfreeze status flags
-    
-    CPI     R21, TRUE   ; check if LRRotLeft is set
+    ; check if LRRotLeft is set
+    CPI     R21, TRUE
     BRNE    LRROTLEFT_NOT_SET
-    SEZ                 ; if set, return true
+
+    ; if set, return true
+    SEZ
     JMP     LeftRot_RET
 LRROTLEFT_NOT_SET:
-    CLZ             ; if reset, return false
+    ; if reset, return false
+    CLZ
 LeftRot_RET:
     POP     R22
     POP     R21
     POP     R0
     RET
 
+
+
+
+; RightRot specification
+; =====================
+; 
+; Description
+; -----------
+; indicates if the LR rotary encoder has been turned right
+; 
+; Operational Description
+; -----------------------
+; Returns `TRUE` (i.e. sets the zero flag) if the LR rotary encoder has 
+; been turned since the last time this was called;
+; otherwise, returns `FALSE` (i.e. resets the zero flag).
+; Resets LRRotRight.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; If LRRotRight is high, return `TRUE` (zero flag set);
+; if LRRotRight is low, return `FALSE` (zero flag reset).
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; LRRotRight (bool): RW
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 3 bytes
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
 RightRot:
     PUSH    R0 ; save status flags
     PUSH    R21 ; R LRRotRight
     PUSH    R22 ; W LRRotRight
     
-    IN      R0, SREG   ; freeze status flags
+    ; freeze status flags and stop interrupts
+    IN      R0, SREG
     CLI
     
     ; critical code
-    LDS     R21, LRRotRight     ; save LRRotRight to register
-    LDI     R22, FALSE  ; reinit LRRotRight
+    ; save LRRightRot to register and reset it
+    LDS     R21, LRRotRight
+    LDI     R22, FALSE
     STS     LRRotRight, R22
     ; end critical code
     
-    OUT     SREG, R0   ; unfreeze status flags
+    ; unfreeze status flags
+    OUT     SREG, R0
     
-    CPI     R21, TRUE   ; check if LRRotRight is set
+    ; check if LRRotRight is set
+    CPI     R21, TRUE
     BRNE    LRROTRIGHT_NOT_SET
-    SEZ                 ; if set, return true
+
+    ; if set, return true
+    SEZ
     JMP     RightRot_RET
 LRROTRIGHT_NOT_SET:
-    CLZ             ; if reset, return false
+    ; if reset, return false
+    CLZ
+
 RightRot_RET:
     POP     R22
     POP     R21
     POP     R0
     RET
 
+
+
+
+; UpRot specification
+; =====================
+; 
+; Description
+; -----------
+; indicates if the UD rotary encoder has been turned up
+; 
+; Operational Description
+; -----------------------
+; Returns `TRUE` (i.e. sets the zero flag) if the UD rotary encoder has 
+; been turned since the last time this was called;
+; otherwise, returns `FALSE` (i.e. resets the zero flag).
+; Resets UDRotUp.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; If UDRotUp is high, return `TRUE` (zero flag set);
+; if UDRotUp is low, return `FALSE` (zero flag reset).
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; UDRotUp (bool): RW
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 3 bytes
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
 UpRot:
     PUSH    R0 ; save status flags
     PUSH    R21 ; R UDRotUp
     PUSH    R22 ; W UDRotUp
-    
-    IN      R0, SREG   ; freeze status flags
+
+    IN      R0, SREG
     CLI
     
     ; critical code
-    LDS     R21, UDRotUp     ; save UDRotUp to register
-    LDI     R22, FALSE  ; reinit UDRotUp
+    ; save UDRotUp to register and reset it
+    LDS     R21, UDRotUp
+    LDI     R22, FALSE
     STS     UDRotUp, R22
     ; end critical code
     
-    OUT     SREG, R0   ; unfreeze status flags
+    ; unfreeze status flags
+    OUT     SREG, R0
     
-    CPI     R21, TRUE   ; check if UDRotUp is set
+    ; check if UDRotUp is set
+    CPI     R21, TRUE
     BRNE    UDROTUP_NOT_SET
-    SEZ                 ; if set, return true
+
+    ; if set, return true
+    SEZ
     JMP     UpRot_RET
 UDROTUP_NOT_SET:
-    CLZ             ; if reset, return false
+    ; if reset, return false
+    CLZ
+
 UpRot_RET:
     POP     R22
     POP     R21
     POP     R0
     RET
 
+
+
+
+; DownRot specification
+; =====================
+; 
+; Description
+; -----------
+; indicates if the UD rotary encoder has been turned down
+; 
+; Operational Description
+; -----------------------
+; Returns `TRUE` (i.e. sets the zero flag) if the UD rotary encoder has 
+; been turned since the last time this was called;
+; otherwise, returns `FALSE` (i.e. resets the zero flag).
+; Resets UDRotDown.
+; 
+; Arguments
+; ---------
+; None
+; 
+; Return Values
+; -------------
+; If UDRotDown is high, return `TRUE` (zero flag set);
+; if UDRotDown is low, return `FALSE` (zero flag reset).
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; UDRotDown (bool): RW
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 3 bytes
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
 DownRot:
     PUSH    R0 ; save status flags
     PUSH    R21 ; R UDRotDown
     PUSH    R22 ; W UDRotDown
     
-    IN      R0, SREG   ; freeze status flags
+    ; freeze status flags and stop interrupts
+    IN      R0, SREG
     CLI
     
     ; critical code
-    LDS     R21, UDRotDown     ; save UDRotDown to register
-    LDI     R22, FALSE  ; reinit UDRotDown
+    ; save UDRotDown to register and reset it
+    LDS     R21, UDRotDown
+    LDI     R22, FALSE
     STS     UDRotDown, R22
     ; end critical code
     
-    OUT     SREG, R0   ; unfreeze status flags
+    ; unfreeze status flags
+    OUT     SREG, R0
     
-    CPI     R21, TRUE   ; check if UDRotDown is set
+    ; check if UDRotDown is set
+    CPI     R21, TRUE
     BRNE    UDROTDOWN_NOT_SET
-    SEZ                 ; if set, return true
+
+    ; if set, return true
+    SEZ
     JMP     DownRot_RET
 UDROTDOWN_NOT_SET:
-    CLZ             ; if reset, return false
+    ; if reset, return false
+    CLZ
+
 DownRot_RET:
     POP     R22
     POP     R21
