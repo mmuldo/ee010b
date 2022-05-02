@@ -1,5 +1,38 @@
-; utility macros
-;.include "util.asm"
+;;;;;;;;;;;;;
+; ports.asm ;
+;;;;;;;;;;;;;
+
+; Description
+; -----------
+; Initializes ports by specifying which ports are input/output.
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; User Interface
+; --------------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Revision History
+; ----------------
+; 04/28/2022    Matt Muldowney      PortE initialization
 
 .CSEG
 
@@ -75,8 +108,11 @@
 ; None
 InitSwitchPort:
     PUSH    R16
+
+    ; set PortE as an input port
     LDI     R16, 0
-    OUT     DDRE, R16 ; set PortE as an input port
+    OUT     DDRE, R16
+
     POP     R16
     RET
 

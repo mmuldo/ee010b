@@ -1,3 +1,59 @@
+;;;;;;;;;;;;;;;;
+; switches.asm ;
+;;;;;;;;;;;;;;;;
+
+; Description
+; -----------
+; Contains all logic for switches and rotary encoders including:
+;   * SwitchEventHandler: Timer0 interrupt event handler
+;   * InitSwitchVars: intialization for shared vars in this file
+;   * DebounceLR: debounces L/R switch
+;   * DebounceUD: debounces U/D switch
+;   * DeRotLR: checks for a detent-to-detent movement on L/R rotary encoder
+;   * DeRotUD: checks for a detent-to-detent movement on U/D rotary encoder
+;   * LRSwitch: indicates when the L/R switch has been pressed
+;   * UDSwitch: indicates when the L/R switch has been pressed
+;   * LeftRot: indicates when the L/R rotary encoder has turned left (ccw)
+;   * RightRot: indicates when the L/R rotary encoder has turned right (cw)
+;   * UpRot: indicates when the U/D rotary encoder has turned up (ccw)
+;   * DownRot: indicates when the U/D rotary encoder has turned down (cw)
+;
+; Inputs
+; ------
+; L/R switch: PortE[5]
+; U/D switch: PortE[2]
+; L/R rotary encoder: PortE[7,6]
+; U/D rotary encoder: PortE[4,3]
+;
+; Outputs
+; -------
+; None
+;
+; User Interface
+; --------------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Revision History
+; ----------------
+; 04/28/2022    Matt Muldowney      initial revision
+; 04/28/2022    Matt Muldowney      fixed syntax errors
+; 04/28/2022    Matt Muldowney      commented out macros bc they don't work :(
+; 04/28/2022    Matt Muldowney      changed registers in certain functions to
+;                                       avoid register collisions
+; 04/28/2022    Matt Muldowney      push and pop SREG in SwitchEventHandler
+
 .DSEG
     LRSwitchPressed:    .BYTE 1 ; bool indicating LR switch has been pressed
     LRSwitchCounter:    .BYTE 1 ; counter for debouncing LR switch
@@ -7,48 +63,23 @@
     LRRotLeft:          .BYTE 1 ; bool indicating LR has been rotated left
     LRRotRight:         .BYTE 1 ; bool indicating LR has been rotated right
 
-    ;   This keeps track of the most recently seen gray codes
-    ;   An example sequence of runs looks like:
-    ;   
-    ;   | graycode      | LRGrayCodeStack   |
-    ;   | ------------- | ----------------- |
-    ;   |               | 00 00 00 11       |
-    ;   |11             | 00 00 00 11       |
-    ;   |10             | 00 00 11 10       |
-    ;   |11             | 00 00 00 11       |
-    ;   |10             | 00 00 11 10       |
-    ;   |00             | 00 11 10 00       |
-    ;   |00             | 00 11 10 00       |
-    ;   |00             | 00 11 10 00       |
-    ;   |01             | 11 10 00 01       |
-    ;   |00             | 00 11 10 00       |
-    ;   |01             | 11 10 00 01       |
-    ;   |11             | 00 00 00 00       |
-    LRGrayCodeStack:    .BYTE 1
+    LRGrayCodeStack:    .BYTE 1 ; keeps tack of 4 most recently seen gray 
+                                ;   codes for L\R rotary encoder. 
+                                ;   e.g. a value of 0b11100001 means 
+                                ;   that the most recently seen codes were
+                                ;   01, 00, 10, and 11 in that order
 
     UDRotUp:            .BYTE 1 ; bool indicating UD has been rotated up
     UDRotDown:          .BYTE 1 ; bool indicating UD has been rotated down
 
-    ;   This keeps track of the most recently seen UD rotary encoder gray codes
-    ;   An example sequence of runs looks like:
-    ;   
-    ;   | graycode      | UDGrayCodeStack   |
-    ;   | ------------- | ----------------- |
-    ;   |               | 00 00 00 11       |
-    ;   |11             | 00 00 00 11       |
-    ;   |10             | 00 00 11 10       |
-    ;   |11             | 00 00 00 11       |
-    ;   |10             | 00 00 11 10       |
-    ;   |00             | 00 11 10 00       |
-    ;   |00             | 00 11 10 00       |
-    ;   |00             | 00 11 10 00       |
-    ;   |01             | 11 10 00 01       |
-    ;   |00             | 00 11 10 00       |
-    ;   |01             | 11 10 00 01       |
-    ;   |11             | 00 00 00 00       |
-    UDGrayCodeStack:    .BYTE 1
+    UDGrayCodeStack:    .BYTE 1 ; keeps tack of 4 most recently seen gray 
+                                ;   codes for L\R rotary encoder. 
+                                ;   e.g. a value of 0b11100001 means 
+                                ;   that the most recently seen codes were
+                                ;   01, 00, 10, and 11 in that order
 
 .CSEG
+
 ; InitSwitchVars Specification
 ; ========================
 ; 
@@ -115,7 +146,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 3 bytes
 ;
 ; Limitations
 ; -----------
@@ -133,29 +164,30 @@ InitSwitchVars:
     PUSH    R17
     PUSH    R18
 
-    LDI     R16, FALSE  ; initial value for shared booleans
-    LDI     R17, SWITCH_COUNTER_INIT    ; switch press counter value to count 
-                                            ; down from (in ms)
-    LDI     R18, GRAYCODE_STACK_INIT    ; initial graycode stack
-
+    LDI     R16, FALSE                  ; initial value for shared booleans
     STS     LRSwitchPressed, R16
-    STS     LRSwitchCounter, R17
-
     STS     UDSwitchPressed, R16
-    STS     UDSwitchCounter, R17
-
     STS     LRRotLeft, R16
     STS     LRRotRight, R16
-    STS     LRGrayCodeStack, R18
-
     STS     UDRotUp, R16
     STS     UDRotDown, R16
+
+
+    LDI     R17, SWITCH_COUNTER_INIT    ; switch press counter value to count 
+                                            ; down from (in ms)
+    STS     LRSwitchCounter, R17
+    STS     UDSwitchCounter, R17
+
+
+    LDI     R18, GRAYCODE_STACK_INIT    ; initial graycode stack
+    STS     LRGrayCodeStack, R18
     STS     UDGrayCodeStack, R18
 
     POP     R18
     POP     R17
     POP     R16
     RET
+
 
 ; SwitchEventHandler Specification
 ; ================================
@@ -223,21 +255,18 @@ InitSwitchVars:
 ; Special Notes
 ; -------------
 ; None
-;
-; Pseudocode
-; ----------
-; DebounceLR()
-; DebounceUD()
-; DeRotLR()
-; DeRotUD()
 SwitchEventHandler:
     IN      R1, SREG
+
     RCALL   DebounceLR
     RCALL   DebounceUD
     RCALL   DeRotLR
     RCALL   DeRotUD
+
     OUT     SREG, R1
     RETI
+
+
 
 ; DebounceLR Specificaiton
 ; ========================

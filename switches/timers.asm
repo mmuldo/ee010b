@@ -1,5 +1,39 @@
-; utility macros
-;.include "util.asm"
+;;;;;;;;;;;;;;
+; timers.asm ;
+;;;;;;;;;;;;;;
+
+; Description
+; -----------
+; Initializes timers by setting appropriate control, output compare, etc.
+; registers
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; User Interface
+; --------------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Revision History
+; ----------------
+; 04/28/2022    Matt Muldowney      timer0 initialization
 
 .CSEG
 
