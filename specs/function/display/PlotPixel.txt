@@ -1,0 +1,80 @@
+; PlotPixel(r, c, color)
+; ======================
+;
+; Description
+; -----------
+; Sets the pixel at row r, column c of the display grid to the specied color
+; (blank, red, green, or yellow).
+;
+; Operational Description
+; -----------------------
+; Sets display[r, c] according to color.
+;
+; Arguments
+; ---------
+; r (int): row of the display (between 0 and 8)
+; c (int): column of the display (between 0 and 8)
+; color (int): color for pixel at r, c (0: blank, 1: red, 2: green, 3: yellow)
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer (8 x 8 bool matrix): W
+; greenBuffer (8 x 8 bool matrix): W
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; None
+;
+; Stack Depth
+; -----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; 
+; redBuffer[r, c] = 0x01 & color
+; greenBuffer[r, c] = color >> 1

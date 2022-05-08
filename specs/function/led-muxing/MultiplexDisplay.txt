@@ -1,0 +1,131 @@
+; MultiplexDisplay()
+; ==================
+;
+; Description
+; -----------
+; This is an event handler responsible for multiplxing the LED display (i.e.
+; turning on the columns one at a time and writing the corresponding column
+; in the buffer to the rows).
+;
+; Operational Description
+; -----------------------
+; The LED mux first turns off all columns of the display. Then, using the
+; current offset, it writes the row ports of the display and increments,
+; the offset. Then, using a 1-hot column mask, it writes the corresponding
+; column port (taking into account if a pixel should be blinked based on
+; SetCursor) and rotates the column mask right. (Obviously, the offset and
+; the column mask should line up such that we write the correct column to the
+; correct place).
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer (8 x 8 bool matrix): R
+; greenBuffer (8 x 8 bool matrix): R
+; cursorChangeCounter (int): RW
+; useCursorColor2 (bool): RW
+; cursorRow (int): R
+; cursorColumn (int): R
+; cursorRed2 (int): R
+; cursorGreen2 (int): R
+;
+;
+; Local Variables
+; ---------------
+; ledBufferOffset (int): RW
+; columnMaskR (8 bit string): RW
+; columnMaskG (8 bit string): RW
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; PortA: green columns of LED grid
+; PortC: rows of LED grid
+; PortD: red columns of LED grid
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; Loops through the 16 columns of display
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; Y
+; [others]
+;
+; Stack Depth
+; -----------
+; [unknown]
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+;
+; save sreg
+; turn off columns
+;
+; IF columnMaskG != 0:
+;   load greenBuffer into Y
+; ELSE:
+;   load redBuffer into Y
+; add ledBufferOffset to Y
+; 
+; ouput Y to port c
+; IF ledBufferOffset == cursorColumn and useCursorColor2:
+;   IF columnMaskG != 0:
+;       PortC[cursorRow] = cursorGreen2
+;   ELSE:
+;       PortC[cursorRow] = cursorRed2
+;
+; cursorChangeCounter--
+; IF cursorChangeCounter == 0:
+;   useCursorColor2 = !useCursorColor2
+;   reinit cursorChangeCounter to 500
+;
+; IF ledBufferOffset == 7:
+;   reinit ledBufferOffset to 0
+; ELSE:
+;   increment ledBufferOffset
+; 
+; output columnMaskG to port a
+; output columnMaskR to port d
+; IF columnMaskG == 0x00 and columnMaskR == 0x01:
+;   reinit columnMaskR to 0x80
+;   reinit columnMaskG to 0x00
+; ELSE:
+;   lsr columnMaskG
+;   ror columnMaskR
+;
+; write back sreg

@@ -1,0 +1,82 @@
+; ClearDisplay()
+; ==============
+;
+; Description
+; -----------
+; clears the LED display such that all LEDS are off
+;
+; Operational Description
+; -----------------------
+; Sets all columns in the buffer to 0x00
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer (8 x 8 boolean matrix): W
+; greenBuffer (8 x 8 boolean matrix): W
+; cursorRed2 (int): W
+; cursorGreen2 (int): W
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; None
+;
+; Stack Depth
+; -----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; 
+; FOR c from 0 to 7:
+;   redBuffer[c] = 0x00
+;   greenBuffer[c] = 0x00
+; cursorRed2 = 0
+; cursorGreen2 = 0

@@ -1,0 +1,71 @@
+; InitDisplayPort Specification
+; ============================
+;
+; Description
+; -----------
+; Initializes PortA (green LED columns), C (LED rows), and D (red LED columns),
+; specifying them as output ports.
+;
+; Operational Description
+; -----------------------
+; Sets DDRA, C, and D to 0xFF (setting PortA, C, and D to input).
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; DDRA (8-bit register)
+; DDRC (8-bit register)
+; DDRD (8-bit register)
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; DDRA = 0xFF
+; DDRC = 0xFF
+; DDRD = 0xFF

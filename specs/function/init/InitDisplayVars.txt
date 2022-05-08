@@ -1,0 +1,146 @@
+; redBuffer (8 x 8 boolean matrix)
+; ---------------------------------
+; the current contents of the red LED grid
+; initialized to all 0 (off)
+
+; greenBuffer (8 x 8 boolean matrix)
+; ---------------------------------
+; the current contents of the green LED grid
+; initialized to all 0 (off)
+
+; ledBufferOffset (int)
+; ---------------------
+; for display multiplexor: offset from ledBuffer that determines which column
+; in the ledBuffer matrix to use for writing the rows of the display
+
+; columnMaskG (8 bit string)
+; --------------------------
+; for display multiplexor: 1-hot byte (in conjunction with columnMaskR)
+; that determines which column of LEDs to write.
+
+; columnMaskR (8 bit string)
+; --------------------------
+; for display multiplexor: 1-hot byte (in conjunction with columnMaskG)
+; that determines which column of LEDs to write
+
+; useCursorColor2 (bool)
+; -------------------------
+; when False, use color1 for cursor; when True use color2 for cursor
+
+; cursorChangeCounter (int)
+; -------------------------
+; initialized to 500. when this hits 0, change the cursor color
+
+; cursorRow (int)
+; ---------------
+; Row of display in which cursor resides
+
+; cursorColumn (int)
+; ---------------
+; Row of display in which column resides
+
+; cursorRed2 (bool)
+; -----------------
+; whether or not red LED should be turned on for second blink of cursor
+
+; cursorGreen2 (bool)
+; -----------------
+; whether or not green LED should be turned on for second blink of cursor
+
+; InitDisplayVars()
+; =================
+;
+; Description
+; -----------
+; Initializes shared variables used for the LED display
+;
+; Operational Description
+; -----------------------
+; Sets shared variables to their initial values.
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer (8 x 8 boolean matrix): W
+; greenBuffer (8 x 8 boolean matrix): W
+; ledBufferOffset (int): W
+; columnMaskG (8 bit string): W
+; columnMaskR (8 bit string): W
+; cursorRow (int): W
+; cursorColumn (int): W
+; cursorRed2 (bool): W
+; cursorGreen2 (bool): W
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; [unknown]
+;
+; Stack Depth
+; --------------
+; [unknown]
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+;
+; FOR i from 0 to 7:
+;   redBuffer[i] = 0x00
+;   greenBuffer[i] = 0x00
+; ENDFOR
+;
+; ledBufferOffset = 0
+;
+; columnMaskG = 0x80
+; columnMaskR = 0x00
+;
+; cursorChangeCounter = 500
+; cursorRow = 0
+; cursorColumn = 0
+; cursorRed2 = F
+; cursorGreen2 = F

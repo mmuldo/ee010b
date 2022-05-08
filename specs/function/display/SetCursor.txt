@@ -1,0 +1,95 @@
+; SetCursor(r, c, c1, c2)
+; =======================
+;
+; Description
+; -----------
+; Sets the pixel at row r, column c of the display grid to blink between
+; color c1 and color c2, switching every 500 ms. This indicates to the user
+; that the cursor is located at row r, column c. The possible colors are
+; blank, red, green, and yellow.
+;
+; Operational Description
+; -----------------------
+; Sets display[r, c] according to c1, cursorRed2 and cursorGreen2 according to 
+; c2, cursorRow to r, cursorColumn to c, such the the display multiplexor 
+; knows how to set up the blinking of the cursor location.
+;
+; Arguments
+; ---------
+; r (int): row of the display (between 0 and 8)
+; c (int): column of the display (between 0 and 8)
+; c1 (int): first color for the cursor to blink (0: blank, 1: red, 2: green, 
+;   3: yellow)
+; c2 (int): second color for the cursor to blink (0: blank, 1: red, 2: green, 
+;   3: yellow)
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer (8 x 8 bool matrix): W
+; greenBuffer (8 x 8 bool matrix): W
+; cursorRow (int): W
+; cursorColumn (int): W
+; cursorRed2 (int): W
+; cursorGreen2 (int): W
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; None
+;
+; Stack Depth
+; -----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+; 
+; cursorRow = r
+; cursorColumn = c
+; redBuffer[r, c] = 0x01 & c1
+; greenBuffer[r, c] = c1 >> 1
+; cursorRed2 = 0x01 & c2
+; cursorGreen2 = c2 >> 1
