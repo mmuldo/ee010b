@@ -4,40 +4,46 @@
 
 ; Description
 ; -----------
-; Contains all logic for the LED grid display including:
-;   * InitDisplayVars: inits display shared vars
-;   * MultiplexDisplay: cycles through which column to display
-;   * ClearDisplay: turns all LEDs off
-;   * PlotPixel: sets a pixel in the grid to a specified color
-;   * SetCursor: blinks a pixel in the grid between 2 specified colors
-;       (indicating the cursor is at that position)
-;   * PlotImage: plots image from specified location in program memory
+; Contains all logic for the LED grid display including.
 ;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; PortA: green LED columns
-; PortC: LED rows
-; PortD: red LED columns
-;
-; User Interface
-; --------------
-; 8 x 8 LED grid, where each pixel contains a red LED and a green LED
-;
-; Error Handling
-; --------------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Limitations
+; Data Memory
 ; -----------
-; None
+; redBuffer: NUM_ROWS x NUM_COLS boolean matrix; the current on states of 
+;   the red LED grid
+; greenBuffer: NUM_ROWS x NUM_COLS boolean matrix; the current on states of
+;   the green LED grid
+; ledBufferOffset: for display multiplexor: offset from 
+;   ledBuffer that determines which column in 
+;   the ledBuffer matrix to use for writing the 
+;   rows of the display
+; columnMaskG: for display multiplexor: 1-hot byte (in 
+;   conjunction with columnMaskR) that 
+;   determines which column of LEDs to write.
+; columnMaskR: for display multiplexor: 1-hot byte (in 
+;   conjunction with columnMaskG) that 
+;   determines which column of LEDs to write
+; useCursorColor2: when False, use color1 for cursor
+;   when True use color2 for cursor
+; cursorChangeCounter: when this hits 0, change the cursor color
+; cursorRow: Row of display in which cursor resides
+; cursorColumn: Row of display in which column resides
+; cursorColor1: color for first blink of cursor
+; cursorColor2: color for second blink of cursor
+; 
+;
+; Tables
+; ------
+; ColorToRGTab: maps OFF, RED, GREEN, YELLOW to (red, green) on states
+;
+; Routines
+; --------
+; InitDisplayVars: inits display shared vars
+; ClearDisplay: turns all LEDs off
+; SetCursor: blinks a pixel in the grid between 2 specified colors
+;   (indicating the cursor is at that position)
+; PlotPixel: sets a pixel in the grid to a specified color
+; MultiplexDisplay: cycles through which column to display
+; PlotImage: plots image from specified location in program memory
 ;
 ; Revision History
 ; ----------------
@@ -49,32 +55,26 @@
 ;                                       unbalanced push/pop in functions)
 ; 05/14/2022    Matt Muldowney      docs
 ; 05/31/2022    Matt Muldowney      PlotImage
+; 06/03/2022    Matt Muldowney      refactored each routine (functionally the same)
 
 .dseg
+    redBuffer:            .byte NUM_COLS
+    greenBuffer:          .byte NUM_COLS
 
-    redBuffer:          .byte 8 ; the current contents of the red LED grid
-    greenBuffer:        .byte 8 ; the current contents of the green LED grid
+    ledBufferOffset:      .byte 1
+    columnMaskG:          .byte 1
+    columnMaskR:          .byte 1
 
-    ledBufferOffset:    .byte 1 ; for display multiplexor: offset from 
-                                ; ledBuffer that determines which column in 
-                                ; the ledBuffer matrix to use for writing the 
-                                ; rows of the display
-    columnMaskG:        .byte 1 ; for display multiplexor: 1-hot byte (in 
-                                ; conjunction with columnMaskR) that 
-                                ; determines which column of LEDs to write.
-    columnMaskR:        .byte 1 ; for display multiplexor: 1-hot byte (in 
-                                ; conjunction with columnMaskG) that 
-                                ; determines which column of LEDs to write
+    useCursorColor2:      .byte 1
+    cursorChangeCounter:  .byte 1
 
-    useCursorColor2:    .byte 1 ; when False, use color1 for cursor
-                                ; when True use color2 for cursor
-    cursorChangeCounter: .byte 1; when this hits 0, change the cursor color
+    cursorRow:            .byte 1
+    cursorColumn:         .byte 1
 
-    cursorRow:          .byte 1 ; Row of display in which cursor resides
-    cursorColumn:       .byte 1 ; Row of display in which column resides
+    cursorColor1:         .byte 1
+    cursorColor2:         .byte 1
 
-    cursorColor1:    .byte 1    ; color for first blink of cursor
-    cursorColor2:    .byte 1    ; color for second blink of cursor
+
 
 .cseg
 
@@ -97,30 +97,21 @@ ColorToRGTab:
     .db   TRUE,   TRUE    ; YELLOW
 
 
-; SetCursor(r, c, c1, c2)
-; =======================
+
+; InitDisplayVars()
+; =================
 ;
 ; Description
 ; -----------
-; Sets the pixel at row r, column c of the display grid to blink between
-; color c1 and color c2, switching every 500 ms. This indicates to the user
-; that the cursor is located at row r, column c. The possible colors are
-; blank, red, green, and yellow.
+; Initializes shared variables used for the LED display
 ;
 ; Operational Description
 ; -----------------------
-; Sets display[r, c] according to c1, cursorRed2 and cursorGreen2 according to 
-; c2, cursorRow to r, cursorColumn to c, such the the display multiplexor 
-; knows how to set up the blinking of the cursor location.
+; Sets shared variables to their initial values.
 ;
 ; Arguments
 ; ---------
-; r (int, r16): row of the display (between 0 and 7) (overwrites)
-; c (int, r17): column of the display (between 0 and 7) (overwrites)
-; c1 (int, r18): first color for the cursor to blink (0: blank, 
-;   1: red, 2: green, 3: yellow)
-; c2 (int, r19): second color for the cursor to blink (0: blank, 
-;   1: red, 2: green, 3: yellow)
+; None
 ;
 ; Return Values
 ; -------------
@@ -132,16 +123,20 @@ ColorToRGTab:
 ;
 ; Shared Variables
 ; ----------------
+; redBuffer (NUM_ROWS x NUM_COLS boolean matrix): W
+; greenBuffer (NUM_ROWS x NUM_COLS boolean matrix): W
+; ledBufferOffset (int): W
+; columnMaskG (NUM_ROWS bit string): W
+; columnMaskR (NUM_ROWS bit string): W
 ; cursorRow (int): W
 ; cursorColumn (int): W
-; cursorRedColor1 (int): W
-; cursorGreenColor1 (int): W
-; cursorRedColor2 (int): W
-; cursorGreenColor2 (int): W
+; cursorColor1 (bool): W
+; cusorColor2 (bool): W
 ;
 ; Local Variables
 ; ---------------
-; None
+; r16: temp register for loading to memory/outting to i/o
+; r17-r19: for SetCursor arguments
 ;
 ; Inputs
 ; ------
@@ -153,12 +148,7 @@ ColorToRGTab:
 ;
 ; Error Handling
 ; --------------
-; if r or c is outside of 0 and 7:
-;   this is fine: in fact, we use this to "unset" the cursor (such that
-;   no pixel on the display is blinking)
-; if c1 or c2 is outside of 0 and 3:
-;   if they are above 3, they get reset to 3; if they are below 0, they get
-;   reset to 0.
+; None
 ;
 ; Algorithms
 ; ----------
@@ -170,14 +160,11 @@ ColorToRGTab:
 ;
 ; Registers Used
 ; --------------
-; r16: r
-; r17: c
-; r18: c1
-; r19: c2
+; None
 ;
 ; Stack Depth
-; -----------
-; 5 bytes
+; --------------
+; 10 bytes
 ;
 ; Limitations
 ; -----------
@@ -190,49 +177,46 @@ ColorToRGTab:
 ; Special Notes
 ; -------------
 ; None
-SetCursor:
-    push    r20
-    push    r21
+InitDisplayVars:
+    push    r16
+    push    r17
+    push    r18
+    push    r19
 
-    ;;; arguments
-    .def    r = r16    ; row
-    .def    c = r17    ; column
-    .def    c1 = r18   ; cursor color 1
-    .def    c2 = r19   ; cursor color 2
+    ; turn off all LEDs so that we start with a blank display
+    rcall   ClearDisplay
+
+    ; init buffer offset (for display mux)
+    ldi     r16, BUFF_OFFSET_INIT
+    sts     ledBufferOffset, r16
     
-    ;;; other registers we need
-    ; for withinBounds tests
-    .def    offReg = r20
-    ; for withinBounds tests
-    .def    yellowReg = r21
-
-    ;;; argument validity checks
-
-    ; OFF <= c1 <= YELLOW
-    ldi     offReg, OFF
-    ldi     yellowReg, YELLOW
-    withinBounds  c1, offReg, yellowReg
-    brtc    SetCursorReturn
-
-    ; OFF <= c2 <= YELLOW
-    withinBounds  c2, offReg, yellowReg
-    brtc    SetCursorReturn
-
-
-    ;;; set the (row, column) position of the cursor
-    sts     cursorRow, r
-    sts     cursorColumn, c
-
-    ;;; set cursorColor1, cursorColor2
-    sts     cursorColor1, c1
-    sts     cursorColor2, c2
+    ; init column masks (for display mux)
+    ldi     r16, COL_MASK_G_INIT
+    sts     columnMaskG, r16
+    ldi     r16, COL_MASK_R_INIT
+    sts     columnMaskR, r16
     
-  SetCursorReturn:
-    pop     r21
-    pop     r20
+    ; init cursor change counter
+    ldi     r16, CURSOR_COUNTER_INIT
+    sts     cursorChangeCounter, r16
 
+    ; init which color cursor starts on
+    ldi     r16, USE_CURSOR_COLOR2_INIT
+    sts     useCursorColor2, r16
+
+    ; init cursor position (should be off grid so that we don't
+    ;   initially see the cursor) and colors
+    ldi     r16, CURSOR_ROW_INIT
+    ldi     r17, CURSOR_COL_INIT
+    ldi     r18, CURSOR_COLOR1_INIT
+    ldi     r19, CURSOR_COLOR2_INIT
+    rcall   SetCursor
+
+    pop     r19
+    pop     r18
+    pop     r17
+    pop     r16
     ret
-
 
 
 
@@ -242,8 +226,8 @@ SetCursor:
 ;
 ; Description
 ; -----------
-; clears the LED display such that all LEDS are off
-; doesn't affect cursor
+; clears the LED display such that all LEDS are off.
+; doesn't affect cursor.
 ;
 ; Operational Description
 ; -----------------------
@@ -263,12 +247,15 @@ SetCursor:
 ;
 ; Shared Variables
 ; ----------------
-; redBuffer (8 x 8 boolean matrix): W
-; greenBuffer (8 x 8 boolean matrix): W
+; redBuffer (NUM_ROWS x NUM_COLS boolean matrix): W
+; greenBuffer (NUM_ROWS x NUM_COLS boolean matrix): W
 ;
 ; Local Variables
 ; ---------------
-; None
+; offReg: holds OFF
+; idx: loop counter
+; y: redBuffer poiner
+; z: greenBuffer poiner
 ;
 ; Inputs
 ; ------
@@ -292,11 +279,11 @@ SetCursor:
 ;
 ; Registers Used
 ; --------------
-; y, z
+; none
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 6 bytes
 ;
 ; Limitations
 ; -----------
@@ -354,25 +341,30 @@ ClearDisplay:
 
 
 
-
-; PlotPixel(r, c, color)
-; ======================
+; SetCursor(row, column, color1, color2)
+; ======================================
 ;
 ; Description
 ; -----------
-; Sets the pixel at row r, column c of the display grid to the specied color
-; (blank, red, green, or yellow).
+; Sets the pixel at row, column of the display grid to blink between
+; color1 and color2, switching every CURSOR_COUNTER_INIT number of Timer0
+; interrupts. This indicates to the user
+; that the cursor is located at row, column. The possible colors are
+; OFF, RED, GREEN, and YELLOW.
 ;
 ; Operational Description
 ; -----------------------
-; Sets display[r, c] according to color.
+; Sets cursorRow to row, cursorColumn to column, cursorColor1 to color1, and
+; cursorColor2 to color2.
 ;
 ; Arguments
 ; ---------
-; r (int, r16): row of the display (between 0 and 7)
-; c (int, r17): column of the display (between 0 and 7)
-; color (int, r18): color for pixel at r, c (0: blank, 1: red, 2: green, 
-;   3: yellow)
+; row (int, r16): row of the display (between 0 and NUM_ROWS-1)
+; column (int, r17): column of the display (between 0 and NUM_COLS-1)
+; color1 (int, r18): first color for the cursor to blink; can be
+;   OFF, RED, GREEN, YELLOW
+; color2 (int, r18): second color for the cursor to blink; can be
+;   OFF, RED, GREEN, YELLOW
 ;
 ; Return Values
 ; -------------
@@ -384,12 +376,15 @@ ClearDisplay:
 ;
 ; Shared Variables
 ; ----------------
-; redBuffer (8 x 8 bool matrix): W
-; greenBuffer (8 x 8 bool matrix): W
+; cursorRow (int): W
+; cursorColumn (int): W
+; cursorColor1 (int): W
+; cursorColor2 (int): W
 ;
 ; Local Variables
 ; ---------------
-; None
+; offReg: holds OFF
+; yellowReg: holds YELLOW
 ;
 ; Inputs
 ; ------
@@ -401,9 +396,11 @@ ClearDisplay:
 ;
 ; Error Handling
 ; --------------
-; if r or c is outside of 0 and 7, don't do anything (return right away)
-; if color is less than OFF set to OFF; if it is greater than YELLOW set
-;   to YELLOW
+; if row or column is outside of 0 and 7:
+;   this is fine: in fact, we use this to "unset" the cursor (such that
+;   no pixel on the display is blinking)
+; if c1 or c2 is outside of OFF and YELLOW:
+;   then we return without doing anything
 ;
 ; Algorithms
 ; ----------
@@ -415,13 +412,149 @@ ClearDisplay:
 ;
 ; Registers Used
 ; --------------
-; r16: r
-; r17: c
-; r18: color
+; none
 ;
 ; Stack Depth
 ; -----------
-; 3 bytes
+; 4 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+SetCursor:
+    push    r20
+    push    r21
+
+    ;;; arguments
+    ; row for cursor
+    .def    row = r16
+    ; column for cursor
+    .def    column = r17
+    ; first color for cursor to blink
+    .def    color1 = r18
+    ; second color for cursor to blink
+    .def    color2 = r19
+    
+    ;;; other registers we need
+    ; for withinBounds tests
+    .def    offReg = r20
+    ; for withinBounds tests
+    .def    yellowReg = r21
+
+    ;;; argument validity checks
+    ; OFF <= color1 <= YELLOW
+    ldi     offReg, OFF
+    ldi     yellowReg, YELLOW
+    withinBounds  color1, offReg, yellowReg
+    brtc    SetCursorReturn
+
+    ; OFF <= color2 <= YELLOW
+    withinBounds  color2, offReg, yellowReg
+    brtc    SetCursorReturn
+
+
+    ;;; set the (row, column) position of the cursor
+    sts     cursorRow, row
+    sts     cursorColumn, column
+
+    ;;; set cursorColor1, cursorColor2
+    sts     cursorColor1, color1
+    sts     cursorColor2, color2
+    
+  SetCursorReturn:
+    pop     r21
+    pop     r20
+
+    ret
+
+
+
+
+; PlotPixel(row, column, color)
+; =============================
+;
+; Description
+; -----------
+; Sets the pixel at row, column of the display grid to the specied color
+; (OFF, RED, GREEN, YELLOW).
+;
+; Operational Description
+; -----------------------
+; Converts color to (red, green) on states, then sets redBuffer[row, column]
+; and greenBuffer[row, column] according to these on states.
+;
+; Arguments
+; ---------
+; row (int, r16): row of the display (between 0 and NUM_ROWS-1)
+; column (int, r17): column of the display (between 0 and NUM_COLS-1)
+; color (int, r18): color for pixel at row, column (OFF, RED, GREEN, YELLOW)
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer (NUM_ROWS x NUM_COLS bool matrix): W
+; greenBuffer (NUM_ROWS x NUM_COLS bool matrix): W
+;
+; Local Variables
+; ---------------
+; zero: holds 0
+; numRowsReg: holds NUM_ROWS
+; numColsReg: holds NUM_COLS
+; offReg: holds OFF
+; yellowReg: holds YELLOW
+; redOn: red on state corresponding to color
+; greenOn: green on state corresponding to color
+; ledOn: red/green on state we're currently checking
+; bufferRowVector: holds row vector for current (red/green) buffer
+; loopCounter: for looping twice
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; row < 0 or row >= NUM_ROWS:
+;   return without doing anything
+; column < 0 or column >= NUM_COLS:
+;   return without doing anything
+; color < OFF or color > YELLOW:
+;   return without doing anything
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 7 bytes
 ;
 ; Limitations
 ; -----------
@@ -438,14 +571,16 @@ PlotPixel:
     push    r19
     push    r20
     push    r21
+    push    r22
+    push    r23
     push    yl
     push    yh
 
     ;;; arguments
     ; row on display
-    .def    r = r16
+    .def    row = r16
     ; column on display
-    .def    c = r17
+    .def    column = r17
     ; color to set at buffer[r, c]
     .def    color = r18
     
@@ -464,19 +599,25 @@ PlotPixel:
     ; reuse r20 since don't need yellowReg when using this
     .def    redOn = r20
     .def    greenOn = r21
+    ; for current LED (red/green) we are checking (for loop)
+    .def    ledOn = r22
 
     ; for updating buffer
+    ; reuse r19 since don't need at same time as 0
     .def    bufferRowVector = r19
 
-    ;;; check validity of (r,c), return if invalid
-    ; must have 0 <= r <= NUM_ROWS
+    ; for loop
+    .def    loopCounter = r23
+
+    ;;; check validity of (row,column), return if invalid
+    ; must have 0 <= row <= NUM_ROWS
     clr     zero
     ldi     numRowsReg, NUM_ROWS
-    withinBounds    r, zero, numRowsReg
+    withinBounds    row, zero, numRowsReg
     brtc    PlotPixelReturnDetour
-    ; must have 0 <= c <= NUM_COLS
+    ; must have 0 <= column <= NUM_COLS
     ldi     numRowsReg, NUM_ROWS
-    withinBounds    c, zero, numColsReg
+    withinBounds    column, zero, numColsReg
     brtc    PlotPixelReturnDetour
 
     ;;; check validity of color, return if invalid
@@ -496,177 +637,53 @@ PlotPixel:
     colorToRG   color, redOn, greenOn
 
 
-    ;;; set redBuffer[r, c] = redOn
-    ; put y at redBuffer[c]
-    clr     zero
+    ;;; loop the following for red and green, since setting 
+    ;;;   redBuffer[row, column] = redOn
+    ;;;   and greenBuffer[row, column] = greenOn use the same logic
+    ; initialize loop counter to 2 (since we're just running twice)
+    ldi     loopCounter, 2
+    ; start with redBuffer[row, column]
+    mov     ledOn, redOn
+    ; put y at redBuffer
     ldi     yl, low(redBuffer)
     ldi     yh, high(redBuffer)
-    add     yl, c
+  PlotPixelLoop:
+    ; adjust pointer by column
+    clr     zero
+    add     yl, column
     adc     yh, zero
 
-    ; get the row vector at redBuffer[c]
+    ; get the row vector at buffer[column]
     ld      bufferRowVector, y
 
-    ; check if red LED should be on
-    cpi     redOn, TRUE
-    ; set redBuffer[r, c] according to z flag
-    setBitToZ   bufferRowVector, r
+    ; check if LED should be on
+    cpi     ledOn, TRUE
+    ; set buffer[row, column] according to z flag
+    setBitToZ   bufferRowVector, row
 
-    ; store updated rowVector back in redBuffer[c]
+    ; store updated rowVector back in buffer[column]
     st      y, bufferRowVector
 
-
-    ;;; set greenBuffer[r, c] = greenOn
-    ; put y at greenBuffer[c]
-    clr     zero
+    ; dec loop counter and check if we should exit
+    dec     loopCounter
+    breq    PlotPixelReturn
+    ; if not done, next iteration is for greenBuffer[row, column]
+    mov     ledOn, greenOn
+    ; put y at greenBuffer
     ldi     yl, low(greenBuffer)
     ldi     yh, high(greenBuffer)
-    add     yl, c
-    adc     yh, zero
-
-    ; get the row vector at greenBuffer[c]
-    ld      bufferRowVector, y
-
-    ; check if green LED should be on
-    cpi     greenOn, TRUE
-    ; set greenBuffer[r, c] according to z flag
-    setBitToZ   bufferRowVector, r
-
-    ; store updated rowVector back in greenBuffer[c]
-    st      y, bufferRowVector
+    ; and loop
+    jmp     PlotPixelLoop
 
   PlotPixelReturn:
     pop     yh
     pop     yl
+    pop     r23
+    pop     r22
     pop     r21
     pop     r20
     pop     r19
     ret
-
-
-
-
-; InitDisplayVars()
-; =================
-;
-; Description
-; -----------
-; Initializes shared variables used for the LED display
-;
-; Operational Description
-; -----------------------
-; Sets shared variables to their initial values.
-;
-; Arguments
-; ---------
-; None
-;
-; Return Values
-; -------------
-; None
-;
-; Global Variables
-; ----------------
-; None
-;
-; Shared Variables
-; ----------------
-; redBuffer (8 x 8 boolean matrix): W
-; greenBuffer (8 x 8 boolean matrix): W
-; ledBufferOffset (int): W
-; columnMaskG (8 bit string): W
-; columnMaskR (8 bit string): W
-; cursorRow (int): W
-; cursorColumn (int): W
-; cursorRed2 (bool): W
-; cursorGreen2 (bool): W
-;
-; Local Variables
-; ---------------
-; None
-;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; None
-;
-; Error Handling
-; --------------
-; None
-;
-; Algorithms
-; ----------
-; None
-;
-; Data Structures
-; ---------------
-; None
-;
-; Registers Used
-; --------------
-; None
-;
-; Stack Depth
-; --------------
-; 1 byte
-;
-; Limitations
-; -----------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Special Notes
-; -------------
-; None
-InitDisplayVars:
-    push    r16
-    push    r17
-    push    r18
-    push    r19
-
-
-    rcall   ClearDisplay
-
-    ; init buffer offset (for display mux)
-    ldi     r16, BUFF_OFFSET_INIT
-    sts     ledBufferOffset, r16
-    
-    ; init column masks (for display mux)
-    ldi     r16, COL_MASK_G_INIT
-    sts     columnMaskG, r16
-    ldi     r16, COL_MASK_R_INIT
-    sts     columnMaskR, r16
-    
-    ; init cursor change counter
-    ldi     r16, CURSOR_COUNTER_INIT
-    sts     cursorChangeCounter, r16
-
-    ; init which color cursor starts on
-    ldi     r16, USE_CURSOR_COLOR2_INIT
-    sts     useCursorColor2, r16
-
-    ; init cursor position (should be off grid so that we don't
-    ; initially see the cursor) and colors
-    ldi     r16, CURSOR_ROW_INIT
-    ldi     r17, CURSOR_COL_INIT
-    ldi     r18, CURSOR_COLOR1_INIT
-    ldi     r19, CURSOR_COLOR2_INIT
-    rcall   SetCursor
-
-    pop     r19
-    pop     r18
-    pop     r17
-    pop     r16
-    ret
-
-
-
 
 
 
@@ -678,7 +695,7 @@ InitDisplayVars:
 ; -----------
 ; This is an event handler responsible for multiplxing the LED display (i.e.
 ; turning on the columns one at a time and writing the corresponding column
-; in the buffer to the rows).
+; in the buffer to the rows). It is called once very Timer0 interrupt.
 ;
 ; Operational Description
 ; -----------------------
@@ -704,8 +721,8 @@ InitDisplayVars:
 ;
 ; Shared Variables
 ; ----------------
-; redBuffer (8 x 8 bool matrix): R
-; greenBuffer (8 x 8 bool matrix): R
+; redBuffer (NUM_ROWS x NUM_COLS bool matrix): R
+; greenBuffer (NUM_ROWS x NUM_COLS bool matrix): R
 ; cursorChangeCounter (int): RW
 ; useCursorColor2 (bool): RW
 ; cursorRow (int): R
@@ -715,9 +732,15 @@ InitDisplayVars:
 ;
 ; Local Variables
 ; ---------------
-; ledBufferOffset (int): RW
-; columnMaskR (8 bit string): RW
-; columnMaskG (8 bit string): RW
+; cursorColor: holds cursor color 1/2
+; cursorRed: current red on state of cursor
+; cursorGreen: current green on state of cursor
+; cursorBit: red/green on state of cursor we're checking
+; colMaskGReg: holds columnMaskG
+; colMaskRReg: holds columnMaskR
+; cursorColumnReg: holds cursorColumn
+; cursorRowReg: holds cursorRow
+; rowVector: row vector for current buffer[column]
 ;
 ; Inputs
 ; ------
@@ -807,10 +830,6 @@ MultiplexDisplay:
     ;   cursorColumnReg at the same time we need this)
     .def        cursorRowReg = r18
 
-    ; for clearing/setting bit in register (reuse r18 since
-    ;   don't need cursorRowRegby the time we need this)
-    .def        oneHotBit = r18
-
     ; for holding the current column's corresponding row vector
     .def        rowVector = r20
 
@@ -864,36 +883,14 @@ MultiplexDisplay:
     brne        MultiplexDisplayOutColumn
     ; otherwise, if it is, set rowVector[cursorRow] = cursorBit
     lds         cursorRowReg, cursorRow
-    ; rows are indexed backwards on actual display, so compliment base NUM_ROWS
-    ;neg         cursorRowReg
-    ;subi        cursorRowReg, -NUM_ROWS
-    ; shift cursor bit into row position
-    ; r16 (byte): one-hot bit (0b00000001)
-    ; r17 (k): cursorRowReg
-    push        r16
-    ldi         r16, BIT0_MASK
-    push        r17
-    mov         r17, cursorRowReg
-    rcall       lslk
-    ; store result in oneHotBit register (so we can recover r16)
-    mov         oneHotBit, r16
-    pop         r17
-    pop         r16
-
-    ; check if cursorBit is 0
-    tst         cursorBit
-    ; if it isn't, set bit
-    brne        MultiplexDisplaySetCursorBit
-    ; if it is, clear bit
-    com         oneHotBit
-    and         rowVector, oneHotBit
-    jmp         MultiplexDisplayOutColumn
-  MultiplexDisplaySetCursorBit:
-    ; set cursor bit in rowVector
-    or          rowVector, oneHotBit
+    ; check if cursorBit is TRUE to see if we want to set
+    ;   or clear rowVector[cursorRowReg]
+    cpi         cursorBit, TRUE
+    ; set/clear rowVector[cursorRowReg] according to z flag
+    setBitToZ   rowVector, cursorRowReg
 
   MultiplexDisplayOutColumn:
-    ; rows on actual display are flipped from the actual
+    ; rows on display are flipped from the actual
     ;   indexing, so flip rowVector before outputting
     flipByte    rowVector
     out         portc, rowVector
@@ -988,7 +985,9 @@ MultiplexDisplay:
 ;
 ; Local Variables
 ; ---------------
-; n (int): loop var
+; n: loop var
+; numLoops: number of times to loop
+; currentCol: current column we're loading
 ;
 ; Inputs
 ; ------
@@ -1016,7 +1015,7 @@ MultiplexDisplay:
 ;
 ; Stack Depth
 ; -----------
-; 1 byte
+; 10 bytes
 ;
 ; Limitations
 ; -----------

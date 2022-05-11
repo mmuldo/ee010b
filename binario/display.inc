@@ -2,7 +2,38 @@
 ; display.inc ;
 ;;;;;;;;;;;;;;;
 
-; constants for switch logic
+; Description
+; -----------
+; constants and macros for display logic
+;
+; Constants
+; ---------
+; OFF
+; RED
+; GREEN
+; YELLOW
+; PIXEL_OFF (same as OFF)
+; PIXEL_RED (same as RED)
+; PIXEL_GREEN (same as GREEN)
+; PIXEL_YELLOW (same as YELLOW)
+; NUM_ROWS
+; NUM_COLS
+; BUFF_OFFSET_INIT
+; COL_MASK_G_INIT
+; COL_MASK_R_INIT
+; COL_MASK_G_FINAL
+; COL_MASK_R_FINAL
+; CURSOR_COUNTER_INIT
+; USE_CURSOR_COLOR2_INIT
+; CURSOR_ROW_INIT
+; CURSOR_COL_INIT
+; CURSOR_COLOR1_INIT
+; CURSOR_COLOR2_INIT
+;
+; Macros
+; ------
+; colorToRG(colorReg, greenReg, redReg): wrapper for accessing ColorToRGTab
+; pltimg(ptr): wrapper for PlotImage(pointer)
 ;
 ; Revision History
 ; ----------------
@@ -11,6 +42,7 @@
 ; 05/10/2022    Matt Muldowney      changed cursor counter init to 250 ms
 ;                                       (from 500 ms)
 ; 05/31/2022    Matt Muldowney      pltimg macro
+; 06/03/2022    Matt Muldowney      colorToRG macro
 
 ; colors
 ; ======
@@ -98,7 +130,7 @@
 ;
 ; Local Variables
 ; ---------------
-; none
+; z: pointer to ColorToRGTab
 ;
 ; Inputs
 ; ------
@@ -126,7 +158,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 3 bytes
 ;
 ; Limitations
 ; -----------
@@ -168,8 +200,9 @@
 .endm
 
 
+
 ; pltimg(ptr)
-; =======================
+; ===========
 ;
 ; Description
 ; -----------
@@ -200,7 +233,7 @@
 ;
 ; Local Variables
 ; ---------------
-; none
+; z: for loading ptr from program memory
 ;
 ; Inputs
 ; ------
