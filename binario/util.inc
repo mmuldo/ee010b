@@ -12,6 +12,7 @@
 ; FALSE
 ; MAX_16BIT
 ; Z_POSITION: position of z flag in sreg
+; BIT{n}_MASK: for masking off nth bit in byte
 ;
 ; Macros
 ; ------
@@ -20,6 +21,11 @@
 ; withinBounds(num, lower, upper): checks lower <= num <= upper
 ; tstWithT(register): tst register, but sets t flag instead of z flag
 ; checkBoolean(boolean): sets z flag according to boolean in data memory
+; toggleOn0(boolean, counter, counterInit): toggles boolean when counter hits 0
+;   and reinits counter when it hits 0
+; flipBits(byte, biti, bitj, bitjMask): swaps byte[i] and byte[j]
+; flipByte(byte): swaps byte[k] = byte[7-k] (i.e. flips byte around)
+; setBitToZ(register, n): set register[n] = z flag
 ;
 ; Revision History
 ; ----------------
@@ -29,6 +35,7 @@
 ; 6/02/2022     Matt Muldowney      withinBounds macro
 ; 6/03/2022     Matt Muldowney      tstWithT, copyTtoZ macros
 ; 6/03/2022     Matt Muldowney      checkBoolean macro
+; 6/04/2022     Matt Muldowney      toggleOn0, setBitToZ, flipBits, flipByte
 
 ; ##########
 ; # consts #
@@ -695,7 +702,9 @@
 ; 
 ; Local Variables
 ; ---------------
-; None
+; boolean: for holding data memory boolean
+; counter: for holding data memory counter
+; zFlagRead: for reading z flag
 ; 
 ; Inputs
 ; ------
@@ -791,7 +800,7 @@
 ; -----------
 ; Exchanges byte[biti] with byte[bitj].
 ; Syntax:
-;   flipByte    Rd, biti, bitj, bitjMask
+;   flipBits    Rd, biti, bitj, bitjMask
 ; 0 <= d <= 31 and biti, bitj, and bitjMasks are constants.
 ; 
 ; Operational Description
@@ -944,7 +953,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 1 byte
+; 0 bytes
 ; 
 ; Limitations
 ; -----------
@@ -1001,7 +1010,8 @@
 ;
 ; Local Variables
 ; ---------------
-; None
+; sregSaved: for reading sreg
+; oneHotBit: mask for setting/clearing a bit in a byte
 ;
 ; Inputs
 ; ------
@@ -1029,7 +1039,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 5 bytes
 ;
 ; Limitations
 ; -----------
