@@ -1,3 +1,5 @@
+.cseg
+
 ; ClearBit(byte, bitNumber)
 ; =======================
 ;
