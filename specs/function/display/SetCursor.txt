@@ -16,8 +16,8 @@
 ;
 ; Arguments
 ; ---------
-; r (int): row of the display (between 0 and 8)
-; c (int): column of the display (between 0 and 8)
+; r (int): row of the display (between 0 and 7)
+; c (int): column of the display (between 0 and 7)
 ; c1 (int): first color for the cursor to blink (0: blank, 1: red, 2: green, 
 ;   3: yellow)
 ; c2 (int): second color for the cursor to blink (0: blank, 1: red, 2: green, 
@@ -33,12 +33,12 @@
 ;
 ; Shared Variables
 ; ----------------
-; redBuffer (8 x 8 bool matrix): W
-; greenBuffer (8 x 8 bool matrix): W
 ; cursorRow (int): W
 ; cursorColumn (int): W
-; cursorRed2 (int): W
-; cursorGreen2 (int): W
+; cursorRedColor1 (int): W
+; cursorGreenColor1 (int): W
+; cursorRedColor2 (int): W
+; cursorGreenColor2 (int): W
 ;
 ; Local Variables
 ; ---------------
@@ -54,7 +54,12 @@
 ;
 ; Error Handling
 ; --------------
-; None
+; if r or c is outside of 0 and 7:
+;   this is fine: in fact, we use this to "unset" the cursor (such that
+;   no pixel on the display is blinking)
+; if c1 or c2 is outside of 0 and 3:
+;   if they are above 3, they get reset to 3; if they are below 0, they get
+;   reset to 0.
 ;
 ; Algorithms
 ; ----------
@@ -89,7 +94,18 @@
 ; 
 ; cursorRow = r
 ; cursorColumn = c
-; redBuffer[r, c] = 0x01 & c1
-; greenBuffer[r, c] = c1 >> 1
-; cursorRed2 = 0x01 & c2
-; cursorGreen2 = c2 >> 1
+;
+; IF c1 > YELLOW:
+;   c1 = YELLOW
+; ELSE IF c1 < 0:
+;   c1 = OFF
+; 
+; IF c2 > YELLOW:
+;   c2 = YELLOW
+; ELSE IF c2 < 0:
+;   c2 = OFF
+;
+; cursorRedColor1 = 0x01 & c1
+; cursorGreenColor1 = c1 >> 1
+; cursorRedColor2 = 0x01 & c2
+; cursorGreenColor2 = c2 >> 1

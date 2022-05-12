@@ -16,9 +16,6 @@
 ; 8 red and green columns
 .equ    NUM_COLS    = 8
 
-; initial column value
-.equ    COL_INIT    = 0x00
-
 ; initial ledBufferOffset (for display mux)
 .equ    BUFF_OFFSET_INIT    = 0
 
@@ -34,10 +31,19 @@
 ; cursor blinking (determines which color to use for cursor)
 .equ    USE_CURSOR_COLOR2_INIT = FALSE
 
-; cursor position
-.equ    CURSOR_ROW_INIT = FALSE
-.equ    CURSOR_COL_INIT = FALSE
+; cursor position (anything that puts the cursor out of bounds will do)
+.equ    CURSOR_ROW_INIT = NUM_ROWS
+.equ    CURSOR_COL_INIT = NUM_COLS
 
 ; alternate cursor color
-.equ    CURSOR_RED2_INIT    = 0
-.equ    CURSOR_GREEN2_INIT  = 0
+.equ    CURSOR_RED_COLOR1_INIT    = 0
+.equ    CURSOR_GREEN_COLOR1_INIT  = 0
+.equ    CURSOR_RED_COLOR2_INIT    = 0
+.equ    CURSOR_GREEN_COLOR2_INIT  = 0
+
+; colors
+; ======
+.equ    OFF     = 0
+.equ    RED     = 1
+.equ    GREEN   = 2
+.equ    YELLOW  = 3

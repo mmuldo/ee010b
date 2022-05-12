@@ -12,8 +12,8 @@
 ;
 ; Arguments
 ; ---------
-; r (int): row of the display (between 0 and 8)
-; c (int): column of the display (between 0 and 8)
+; r (int): row of the display (between 0 and 7)
+; c (int): column of the display (between 0 and 7)
 ; color (int): color for pixel at r, c (0: blank, 1: red, 2: green, 3: yellow)
 ;
 ; Return Values
@@ -43,7 +43,9 @@
 ;
 ; Error Handling
 ; --------------
-; None
+; if r or c is outside of 0 and 7, don't do anything (return right away)
+; if color is less than 0 (off) set to 0; if it is greater than 3 (yellow) set
+;   to yellow
 ;
 ; Algorithms
 ; ----------
@@ -76,5 +78,10 @@
 ; Pseudocode
 ; ----------
 ; 
-; redBuffer[r, c] = 0x01 & color
-; greenBuffer[r, c] = color >> 1
+; red = TRUE & color
+; red << r
+; redBuffer[c] |= red
+; 
+; green = color >> 1
+; green << r
+; greenBuffer[c] |= green

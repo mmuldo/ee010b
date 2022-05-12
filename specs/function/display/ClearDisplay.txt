@@ -4,10 +4,11 @@
 ; Description
 ; -----------
 ; clears the LED display such that all LEDS are off
+; doesn't affect cursor
 ;
 ; Operational Description
 ; -----------------------
-; Sets all columns in the buffer to 0x00
+; Sets all columns in the buffer to OFF
 ;
 ; Arguments
 ; ---------
@@ -25,8 +26,6 @@
 ; ----------------
 ; redBuffer (8 x 8 boolean matrix): W
 ; greenBuffer (8 x 8 boolean matrix): W
-; cursorRed2 (int): W
-; cursorGreen2 (int): W
 ;
 ; Local Variables
 ; ---------------
@@ -75,8 +74,6 @@
 ; Pseudocode
 ; ----------
 ; 
-; FOR c from 0 to 7:
-;   redBuffer[c] = 0x00
-;   greenBuffer[c] = 0x00
-; cursorRed2 = 0
-; cursorGreen2 = 0
+; FOR c from 0 to NUM_COLS-1:
+;   redBuffer[c] = OFF
+;   greenBuffer[c] = OFF
