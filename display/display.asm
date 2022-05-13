@@ -1,3 +1,5 @@
+.cseg
+
 ;;;;;;;;;;;;;;;
 ; display.asm ;
 ;;;;;;;;;;;;;;;
@@ -62,9 +64,13 @@
     cursorRow:          .byte 1 ; Row of display in which cursor resides
     cursorColumn:       .byte 1 ; Row of display in which column resides
 
-    cursorRed2:         .byte 1 ; whether or not red LED should be turned on 
+    cursorRedColor1:    .byte 1 ; whether or not red LED should be turned on 
+                                ; for first blink of cursor
+    cursorGreenColor1:  .byte 1 ; whether or not green LED should be turned on 
+                                ; for first blink of cursor
+    cursorRedColor2:    .byte 1 ; whether or not red LED should be turned on 
                                 ; for second blink of cursor
-    cursorGreen2:       .byte 1 ; whether or not green LED should be turned on 
+    cursorGreenColor2:  .byte 1 ; whether or not green LED should be turned on 
                                 ; for second blink of cursor
 
 .cseg
@@ -751,8 +757,10 @@ InitDisplayVars:
 ; useCursorColor2 (bool): RW
 ; cursorRow (int): R
 ; cursorColumn (int): R
-; cursorRed2 (int): R
-; cursorGreen2 (int): R
+; cursorRedColor1 (int): R
+; cursorGreenColor1 (int): R
+; cursorRedColor2 (int): R
+; cursorGreenColor2 (int): R
 ;
 ;
 ; Local Variables
@@ -844,6 +852,7 @@ InitDisplayVars:
 ;
 ; write back sreg
 MultiplexDisplay:
+    ;;; registers needed
     ; r16: temporary stuff
     .def temp = r16
     push temp
@@ -868,46 +877,59 @@ MultiplexDisplay:
     .def changeCounter = r21
     push changeCounter
     lds changeCounter, cursorChangeCounter
+
     ; r22: the cursor color we are setting (could be for red/green 1/2 
     ;   depending)
     .def cursorColor = r22
+    push cursorColor
+
 
     ;;; turn off all columns
     ldi temp, OFF
     out porta, temp
     out portd, temp
 
+
     ;;; figure out if we want to load green or red into Y
-    ; if the 1 is in columnMaskG, load greenBuffer into Y
+    ; if the 1 is not in columnMaskG...
     cpi colMaskG, 0
+    ; load red buffer
     breq LoadRedBuffer
+    ; otherwise , load green buffer
     ldi yl, low(greenBuffer)
     ldi yh, high(greenBuffer)
 
-    ; figure out which green color (1 or 2) we want for the cursor
-    cpi useColor2, FALSE
-    brne UseCursorGreenColor2
+    ; if currently using cursor color 2...
+    cpi useColor2, TRUE
+    ; load green cursor color 2
+    breq UseCursorGreenColor2
+    ; otherwise, load green cursor color 1
     lds cursorColor, cursorGreenColor1
     jmp ResolveCursorInBuffer
   UseCursorGreenColor2:
+    ; load green cursor color 2 if useColor2 is true
     lds cursorColor, cursorGreenColor2
-    ;jmp ResolveCursorInBuffer
+    jmp ResolveCursorInBuffer
 
-    ; otherwise the 1 is in columnMaskR, so load redBuffer into Y
   LoadRedBuffer:
+    ; load red buffer
     ldi yl, low(redBuffer)
     ldi yh, high(redBuffer)
 
-    ; figure out which red color (1 or 2) we want for the cursor
-    cpi useColor2, FALSE
-    brne UseCursorRedColor2
+    ; if currently using cursor color 2...
+    cpi useColor2, TRUE
+    ; load red cursor color 2
+    breq UseCursorRedColor2
+    ; otherwise, load red cursor color 1
     lds cursorColor, cursorRedColor1
     jmp ResolveCursorInBuffer
   UseCursorRedColor2:
+    ; load red cursor color 2
     lds cursorColor, cursorRedColor2
     ;jmp ResolveCursorInBuffer
 
-    ;;; figure out if we're at the cursor's column
+    ;;; figure out if we're at the cursor's column (and thus should load
+    ;;;     the cursor colors)
   ResolveCursorInBuffer:
     ; adjust y by offset (so that we're at the right column)
     add yl, bufferOffset
@@ -923,20 +945,26 @@ MultiplexDisplay:
     brne ClearCursorInBuffer
     ; then set the current column's cursor row bit
     ; note that r16 (temp) already contains the column vector
+    ; save r17 because we need to overwrite for function call
     push r17
     lds r17, cursorRow
     rcall SetBit
+    ; recover r17
     pop r17
-    ; temp[r] (r16) is now set
+    ; temp[cursorRow] (which contains column vector to output to port c) is 
+    ;   now set
     jmp OutY2C
   ClearCursorInBuffer:
     ; otherwise clear the current column's cursor row bit
     ; note that r16 (temp) already contains the column vector
+    ; save r17 because we need to overwrite for function call
     push r17
     lds r17, cursorRow
-    rcall SetBit
+    rcall ClearBit
+    ; recover r17
     pop r17
-    ; temp[r] (r16) is now cleared
+    ; temp[cursorRow] (which contains column vector to output to port c) is 
+    ;   now clear
     ;jmp OutY2C
 
     ;;; output y (the rows of the current column) to port c
@@ -946,20 +974,25 @@ MultiplexDisplay:
     
     ;;; adjust cursor vars and re-init if necessary
     dec changeCounter
+    ; if cursorChangeCounter is at 0 ...
     cpi changeCounter, 0
     brne ReInitOffset
-    ; if cursorChangeCounter is at 0 ...
     ; invert useCursorColor2
     eor useColor2, TRUE
+    sts useCursorColor2, useColor2
     ; reinit cursorChangeCounter
     ldi changeCounter, CURSOR_COUNTER_INIT
     sts cursorChangeCounter, changeCounter
 
 
     ;;; inc led buffer offset (the indexer) and reinit if necessary
+  ReInitOffset:
     inc bufferOffset
+    ; if bufferOffset doesn't exceed the max column index...
     cpi bufferOffset, NUM_COLS
+    ; leave the buffer offset incremented
     brne StoreBufferOffset
+    ; otherwise, reinit the buffer offset
     ldi bufferOffset, BUFF_OFFSET_INIT
   StoreBufferOffset:
     sts ledBufferOffset, bufferOffset
@@ -972,10 +1005,13 @@ MultiplexDisplay:
     out portd, colMaskR
 
     ;;; rotate column masks
-    cpi colMaskG, 0x00
+    ; if green column mask is in its final state...
+    cpi colMaskG, COL_MASK_G_FINAL
     brne RotateColumnMasks
-    cpi colMaskR, 0x01
+    ; and if red column mask is in its final state...
+    cpi colMaskR, COL_MASK_R_FINAL
     brne RotateColumnMasks
+    ; then reinit the column masks
     ldi colMaskG, COL_MASK_G_INIT
     ldi colMaskR, COL_MASK_R_INIT
     jmp StoreColumnMasks
@@ -988,4 +1024,22 @@ MultiplexDisplay:
     sts columnMaskG, colMaskG
     sts columnMaskR, colMaskR
 
+
+    pop cursorColor
+    pop changeCounter
+    pop useColor2
+    pop bufferOffset
+    pop colMaskR
+    pop colMaskG
+    pop temp
+
+
     ret
+
+
+DisplayEventHandler:
+    rcall MultiplexDisplay
+    ret
+
+
+.include "util.asm"

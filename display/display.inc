@@ -22,6 +22,9 @@
 ; initial column masks (for display mux)
 .equ    COL_MASK_G_INIT     = 0x80
 .equ    COL_MASK_R_INIT     = 0x00
+; final column masks (for display mux)
+.equ    COL_MASK_G_FINAL    = 0x00
+.equ    COL_MASK_R_FINAL    = 0x01
 
 ; cursor
 ; ======
