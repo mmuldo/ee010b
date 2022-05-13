@@ -91,8 +91,8 @@
 ;
 ; Arguments
 ; ---------
-; r (int, r16): row of the display (between 0 and 7)
-; c (int, r17): column of the display (between 0 and 7)
+; r (int, r16): row of the display (between 0 and 7) (overwrites)
+; c (int, r17): column of the display (between 0 and 7) (overwrites)
 ; c1 (int, r18): first color for the cursor to blink (0: blank, 
 ;   1: red, 2: green, 3: yellow)
 ; c2 (int, r19): second color for the cursor to blink (0: blank, 
@@ -174,18 +174,18 @@ SetCursor:
     .def c2 = r19   ; cursor color 2
     
     ;;; other registers we need
-    push r21        ; cursor red color 1
     .def red1 = r21
-    push r22        ; cursor green color 1
-    .def green1 = r22
-    push r23        ; cursor red color 2
-    .def red2 = r23
-    push r24        ; cursor green color 2
-    .def green2 = r24
+    push red1        ; cursor red color 1
 
-    push r20        ; constant YELLOW
-    .def yellow = r20
-    ldi yellow, YELLOW
+    .def green1 = r22
+    push green1        ; cursor green color 1
+
+    .def red2 = r23
+    push red2        ; cursor red color 2
+
+    .def green2 = r24
+    push green2        ; cursor green color 2
+
 
 
     ;;; set the (row, column) position of the cursor
@@ -194,33 +194,29 @@ SetCursor:
 
 
     ;;; saturate c1, c2 args if invalid (less than OFF, greater than YELLOW)
-    push r16
-    push r17
-    push r18
+    ; OFF <= c1 <= YELLOW
     mov r16, c1
     ldi r17, OFF
     ldi r18, YELLOW
     rcall Saturate
-    pop r18
-    pop r17
+    ; recover r16 -> c1
     mov c1, r16
-    pop r16
 
-    push r16
-    push r17
-    push r18
+    ; push c1 since we need to overwrite for function call (no longer need
+    ;   to save r, c)
+    push c1
+    ; OFF <= c2 <= YELLOW
     mov r16, c2
     ldi r17, OFF
     ldi r18, YELLOW
     rcall Saturate
-    pop r18
-    pop r17
+    ; recover c1 for later stuff
+    pop c1
+    ; copy r16 to c2
     mov c2, r16
-    pop r16
 
 
     ;;; set the color information of the cursor
-  SetCursorColors:
     ; red1 is bit0 of c1
     mov red1, c1
     andi red1, TRUE
@@ -243,11 +239,10 @@ SetCursor:
     
     
     ;;; return
-    pop r20
-    pop r24
-    pop r23
-    pop r22
-    pop r21
+    pop green2
+    pop red2
+    pop green1
+    pop red1
     ret
 
 
@@ -327,12 +322,13 @@ SetCursor:
 ; None
 ClearDisplay:
     ;;; push needed registers
-    push r16        ; r16: OFF
-    .def off = r16
-    ldi off, OFF
+    .def blank = r16 ; r16: OFF
+    push blank        ; r16: OFF
+    ldi blank, OFF
 
-    push r17        ; r17: loop index
     .def idx = r17
+    push idx        ; r17: loop index
+
 
     ; y: redBuffer, z: greenBuffer
     ldi yl, low(redBuffer)
@@ -343,15 +339,16 @@ ClearDisplay:
     ;;; turn off every column in red and green buffers
     ldi idx, 0
   ClearBuffersLoop:
-    st y+, off
-    st z+, off
+    st y+, blank
+    st z+, blank
+    inc idx
     cpi idx, NUM_COLS
     brlt ClearBuffersLoop
     
 
     ;;; return
-    pop r17
-    pop r16
+    pop idx
+    pop blank
     ret
 
 
@@ -422,7 +419,7 @@ ClearDisplay:
 ;
 ; Stack Depth
 ; -----------
-; None
+; 2 bytes
 ;
 ; Limitations
 ; -----------
@@ -451,147 +448,135 @@ PlotPixel:
     .def r = r16        ; r16: display row
     .def c = r17        ; r17: display column
     .def color = r18    ; r18: color to set
-
-
-    ;;; other registers we need
-    push r19            ; r19: red color
-    .def red = r19
-
-    push r20            ; r20: green color
-    .def green = r20
-
-    push r22            ; r22: YELLOW
-    .def yellow = r22
-    ldi yellow, YELLOW
-
-    push r23            ; r23: redBuffer[c]
-    .def redBuffer_c = r23
-
-    push r24            ; r24: greenBuffer[c]
-    .def greenBuffer_c = r24
+    
 
     ;;; check validity of (r,c) , return if invalid
-    push r18
+    ; save color since overwritten by function call
+    push color
     ldi r18, TRUE ; we can use this for each call since CheckValid only
                     ; changes its value if invalid
 
+
+    ; save r, c since overwritten by function call
+    push r
+    push c
     ; r must be >= 0
-    push r16
-    push r17
     mov r16, r
     ldi r17, 0
     rcall CheckValid
-    pop r17
-    pop r16
 
-    ; r must be < NUM_ROWS
-    push r16
-    push r17
+    ; r must be <= NUM_ROWS-1
+    mov r17, r
     ldi r16, NUM_ROWS
     dec r16
-    mov r17, r
     rcall CheckValid
-    pop r17
-    pop r16
 
+    ; recover c -> r16
+    pop r16
     ; c must be >= 0
-    push r16
-    push r17
-    mov r16, c
     ldi r17, 0
     rcall CheckValid
-    pop r17
-    pop r16
 
-    ; c must be < NUM_COLS
-    push r16
-    push r17
-    ldi r16, NUM_ROWS
+    ; copy c (in r16 at the moment) to r17)
+    mov r17, r16
+    ; c must be <= NUM_COLS-1
+    ldi r16, NUM_COLS
     dec r16
-    mov r17, r
     rcall CheckValid
-    pop r17
-    pop r16
+    
+    ; recover r and c
+    mov c, r17
+    pop r
 
     ; return if any of the above args are invalid
     cpi r18, TRUE
-    pop r18
-    breq CheckColorValidity_PlotPixel
-    ret
+    ; recover color
+    pop color
+    brne Return_PlotPixel
+
+    
+    ;;; other registers we need
+    .def redOn = r19
+    push redOn            ; r19: red color
+    .def greenOn = r20
+    push greenOn            ; r20: green color
+    .def zero = r21       ; immediate 0
+    push zero
+    ldi zero, 0
+    
 
     ;;; check validity of color, set to nearest bound (OFF or YELLOW) if out
     ;;; of bounds
+    ; save r, c since overwritten by function call
+    push r
+    push c
     ; color must be >= OFF
-    push r16
-    push r17
-    push r18
     mov r16, color
     ldi r17, OFF
     ldi r18, YELLOW
     rcall Saturate
-    pop r18
-    pop r17
+    pop c
     mov color, r16
-    pop r16
+    pop r
 
 
-    ;;; set redBuffer[r, c]
-    mov red, color
+    ;;; set red/greenBuffer[r, c] according to red/greenOn
+    ; red is bit0 of color
+    mov redOn, color
+    andi redOn, TRUE
 
-    ; get red bit from color
-    andi red, TRUE
-
-    ; red << r
-    push r16
-    push r17
-    ld r16, red
-    ld r17, r
-    rcall lslk
-    mov red, r16
-    pop r17
-    pop r16
+    ; green is bit 1 of color
+    mov greenOn, color
+    lsr greenOn
 
     ; put y at redBuffer[c]
     ldi yl, low(redBuffer)
     ldi yh, high(redBuffer)
     add yl, c
-    adc yh, 0
-    ; get contents at redBuffer[c]
-    lds redBuffer_c, y
+    adc yh, zero
+    
+    ; put z at greenBuffer[c]
+    ldi zl, low(greenBuffer)
+    ldi zh, high(greenBuffer)
+    add zl, c
+    adc zh, zero
 
-    ; redBuffer[c] |= red
-    or redBuffer_c, red
-    sts y, redBuffer_c
+    
+    ; prepare for Set/ClearBit function calls
+    ld r16, y
+    mov r17, r
+    ; if redOn is TRUE...
+    cpi redOn, TRUE
+    brne ClearRedBufferCR_PlotPixel
+    ; then set redBuffer[c][r]
+    rcall SetBit
+    jmp StoreRedBufferBack_PlotPixel
+  ClearRedBufferCR_PlotPixel:
+    rcall ClearBit
+    ;jmp StoreRedBufferBack_PlotPixel
+  StoreRedBufferBack_PlotPixel:
+    st y, r16
 
+    ; prepare for Set/ClearBit function calls
+    ld r16, z
+    ; note r is already in r17
+    ; if greenOn is TRUE...
+    cpi greenOn, TRUE
+    brne ClearGreenBufferCR_PlotPixel
+    ; then set greenBuffer[c][r]
+    rcall SetBit
+    jmp StoreGreenBufferBack_PlotPixel
+  ClearGreenBufferCR_PlotPixel:
+    rcall ClearBit
+    ;jmp StoreGreenBufferBack_PlotPixel
+  StoreGreenBufferBack_PlotPixel:
+    st z, r16
+    
+    pop zero
+    pop greenOn
+    pop redOn
 
-    ;;; set greenBuffer[r, c]
-    mov green, color
-
-    ; get green bit from color
-    andi green, TRUE
-
-    ; green << r
-    push r16
-    push r17
-    ld r16, green
-    ld r17, r
-    rcall lslk
-    mov green, r16
-    pop r17
-    pop r16
-
-    ; put y at greenBuffer[c]
-    ldi yl, low(greenBuffer)
-    ldi yh, high(greenBuffer)
-    add yl, c
-    adc yh, 0
-    ; get contents at greenBuffer[c]
-    lds greenBuffer_c, y
-
-    ; greenBuffer[c] |= green
-    or greenBuffer_c, green
-    sts y, greenBuffer_c
-
+  Return_PlotPixel:
     ret
 
 
@@ -656,11 +641,11 @@ PlotPixel:
 ;
 ; Registers Used
 ; --------------
-; [unknown]
+; None
 ;
 ; Stack Depth
 ; --------------
-; [unknown]
+; 1 byte
 ;
 ; Limitations
 ; -----------
@@ -674,8 +659,10 @@ PlotPixel:
 ; -------------
 ; None
 InitDisplayVars:
-    push r16        ; r16: multipurpose
+    ;;; registers needed
     .def temp = r16
+    push temp        ; r16: multipurpose
+
 
     rcall ClearDisplay
 
@@ -704,15 +691,16 @@ InitDisplayVars:
     sts cursorColumn, temp
 
     ; init cursor color
-    ldi temp, CURSOR_RED_COLOR_1_INIT
+    ldi temp, CURSOR_RED_COLOR1_INIT
     sts cursorRedColor1, temp
-    ldi temp, CURSOR_GREEN_COLOR_1_INIT
+    ldi temp, CURSOR_GREEN_COLOR1_INIT
     sts cursorGreenColor1, temp
-    ldi temp, CURSOR_RED_COLOR_2_INIT
+    ldi temp, CURSOR_RED_COLOR2_INIT
     sts cursorRedColor2, temp
-    ldi temp, CURSOR_GREEN_COLOR_2_INIT
+    ldi temp, CURSOR_GREEN_COLOR2_INIT
     sts cursorGreenColor2, temp
 
+    pop temp
     ret
 
 
@@ -880,6 +868,11 @@ MultiplexDisplay:
     ;   depending)
     .def cursorColor = r22
     push cursorColor
+    
+    ; r23: immediate 0
+    .def zero = r23
+    push zero
+    ldi zero, 0
 
 
     ;;; turn off all columns
@@ -931,39 +924,38 @@ MultiplexDisplay:
   ResolveCursorInBuffer:
     ; adjust y by offset (so that we're at the right column)
     add yl, bufferOffset
-    adc yh, 0
+    adc yh, zero
 
     ; if the current column is the cursor's column ...
     lds temp, cursorColumn
-    cpi bufferOffset, temp
-    lds temp, y ; put the column vector in temp
+    cp bufferOffset, temp
+    ld temp, y ; put the column vector in temp
     brne OutY2C
+    
+    ; prepare for Set/ClearBit function calls
+    ; then set the current column's cursor row bit
+    ; note that r16 (temp) already contains the column vector
+    ; save colMaskG because we need to overwrite for function call
+    push colMaskG
+    lds r17, cursorRow
+    
     ; and if cursorColor is set ...
     cpi cursorColor, TRUE
     brne ClearCursorInBuffer
-    ; then set the current column's cursor row bit
-    ; note that r16 (temp) already contains the column vector
-    ; save r17 because we need to overwrite for function call
-    push r17
-    lds r17, cursorRow
     rcall SetBit
-    ; recover r17
-    pop r17
     ; temp[cursorRow] (which contains column vector to output to port c) is 
     ;   now set
+    ; recover colMaskG
+    pop colMaskG
     jmp OutY2C
   ClearCursorInBuffer:
-    ; otherwise clear the current column's cursor row bit
-    ; note that r16 (temp) already contains the column vector
-    ; save r17 because we need to overwrite for function call
-    push r17
-    lds r17, cursorRow
     rcall ClearBit
-    ; recover r17
-    pop r17
     ; temp[cursorRow] (which contains column vector to output to port c) is 
     ;   now clear
+    ; recover colMaskG
+    pop colMaskG
     ;jmp OutY2C
+
 
     ;;; output y (the rows of the current column) to port c
   OutY2C:
@@ -976,7 +968,8 @@ MultiplexDisplay:
     cpi changeCounter, 0
     brne ReInitOffset
     ; invert useCursorColor2
-    eor useColor2, TRUE
+    ldi temp, TRUE
+    eor useColor2, temp
     sts useCursorColor2, useColor2
     ; reinit cursorChangeCounter
     ldi changeCounter, CURSOR_COUNTER_INIT
@@ -1023,6 +1016,7 @@ MultiplexDisplay:
     sts columnMaskR, colMaskR
 
 
+    pop zero
     pop cursorColor
     pop changeCounter
     pop useColor2
@@ -1032,9 +1026,4 @@ MultiplexDisplay:
     pop temp
 
 
-    ret
-
-
-DisplayEventHandler:
-    rcall MultiplexDisplay
     ret

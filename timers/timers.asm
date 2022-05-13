@@ -131,13 +131,9 @@ Timer0EventHandler:
     push r0
 
     rcall SwitchEventHandler
-    rcall DisplayEventHandler
+    rcall MultiplexDisplay
 
     pop r0
     out sreg, r0
 
     reti
-
-
-.include "switches.asm"
-.include "display.asm"

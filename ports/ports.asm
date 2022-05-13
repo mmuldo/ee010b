@@ -184,13 +184,13 @@ InitSwitchPort:
 InitDisplayPorts:
     ;;; registers needed
     ; r16: holds OUTPUT port const
-    .def output = r16
-    push output
-    ldi output, OUTPUT
+    .def outp = r16
+    push outp
+    ldi outp, OUTPUT
 
-    out ddra, output
-    out ddrc, output
-    out ddrd, output
+    out ddra, outp
+    out ddrc, outp
+    out ddrd, outp
 
-    pop output
+    pop outp
     ret

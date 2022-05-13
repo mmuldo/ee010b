@@ -29,7 +29,7 @@
 ; cursor
 ; ======
 ; cursor change counter (uses 1 ms timer0)
-.equ    CURSOR_COUNTER_INIT = 500
+.equ    CURSOR_COUNTER_INIT = 250
 
 ; cursor blinking (determines which color to use for cursor)
 .equ    USE_CURSOR_COLOR2_INIT = FALSE

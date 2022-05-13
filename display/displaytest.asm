@@ -77,6 +77,9 @@ Start:                                  ;start the CPU after a reset
         out     sph, r16
 
 		rcall	InitDisplayPorts
+        rcall   InitDisplayVars
+        rcall   InitTimer0
+        sei
 
     InfLoop: rcall InfLoop
 
