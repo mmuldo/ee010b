@@ -5,11 +5,11 @@
 ;
 ; Description
 ; -----------
-; clears byte[bitNumber]
+; clears byte[7 - bitNumber] (reversed because that's how the board is)
 ;
 ; Operational Description
 ; -----------------------
-; ROLs 0b1111 1110 such that the 0 is in the bitNumber position, and then 
+; RORs 0b1111 1110 such that the 0 is in the bitNumber position, and then 
 ;   ANDs it with byte to ensure byte[bitNumber] is cleared
 ;
 ; Arguments
@@ -20,7 +20,7 @@
 ;
 ; Return Values
 ; -------------
-; 8-bit string, r16: byte with byte[bitNumber] set 
+; 8-bit string, r16: byte with byte[7 - bitNumber] clear 
 ;
 ; Global Variables
 ; ----------------
@@ -111,7 +111,7 @@ ClearBit:
     ; r18: bit mask (this gets shifted appropriately)
     .def mask = r18
     push mask
-    ldi mask, 0b11111110
+    ldi mask, 0b01111111
 
     ;;; shift the bit mask left bitNumber times
     ; save r16, r17 bc we need to overwrite for function call
@@ -119,8 +119,8 @@ ClearBit:
     push r17
     
     mov r16, mask
-    ; rolk(mask, bitNumber)
-    rcall rolk 
+    ; rork(mask, bitNumber)
+    rcall rork 
     mov mask, r16
     ; recover r16, r17
     pop r17
@@ -138,12 +138,12 @@ ClearBit:
 ;
 ; Description
 ; -----------
-; sets byte[bitNumber]
+; sets byte[7 - bitNumber] (reversed because that's how the board is)
 ;
 ; Operational Description
 ; -----------------------
-; LSLs 0x01 such that the 1 is in the bitNumber position, and then ORs it with
-; byte to ensure byte[bitNumber] is set
+; RSLs 0b10000000 such that the 1 is in the bitNumber position, and then ORs it 
+; with byte to ensure byte[bitNumber] is set
 ;
 ; Arguments
 ; ---------
@@ -153,7 +153,7 @@ ClearBit:
 ;
 ; Return Values
 ; -------------
-; 8-bit string, r16: byte with byte[bitNumber] set 
+; 8-bit string, r16: byte with byte[7 - bitNumber] set 
 ;
 ; Global Variables
 ; ----------------
@@ -242,7 +242,7 @@ SetBit:
     ; r18: bit mask (this gets shifted appropriately)
     .def mask = r18
     push mask
-    ldi mask, 0x01
+    ldi mask, 0b10000000
 
     ;;; shift the bit mask left bitNumber times
 	; save r16, r17 bc we need to overwrite for function call
@@ -250,8 +250,8 @@ SetBit:
     push r17
     mov r16, mask
 	; r17 already contains bitNumber
-    ; mask << bitNumber (lslk(mask, bitNumber))
-    rcall lslk 
+    ; mask >> bitNumber (lslk(mask, bitNumber))
+    rcall lsrk 
     mov mask, r16
 	; recover r16, r17
     pop r17
@@ -615,4 +615,173 @@ rolk:
     jmp     rolLoop
   rolDone:
     pop zero
+    ret
+
+    
+; lsrk(byte, k)
+; ==================
+;
+; Description
+; -----------
+; logically shifts byte right k times
+;
+; Operational Description
+; -----------------------
+; performs k lsr's on byte
+;
+; Arguments
+; ---------
+; byte (8-bit string, r16): byte to lsr
+; k (int, r17): amount to lsr
+;
+; Return Values
+; -------------
+; 8-bit string, r16: byte >> k
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; r16: byte
+; r17: k
+;
+; Stack Depth
+; -----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Special Notes
+; -------------
+; None
+lsrk:
+    .def byte = r16 ; r16: the thing we are lsr-ing
+    .def k = r17    ; r17: the amount to lsr
+
+  lsrLoop:
+    cpi     k, 0
+    breq    lsrDone
+    lsr     byte
+    dec     k
+    jmp     lsrLoop
+  lsrDone:
+    ret
+
+
+; rork(byte, k)
+; ==================
+;
+; Description
+; -----------
+; rotates byte right (not through carry)! k times
+;
+; Operational Description
+; -----------------------
+; performs k (lsr -> adc 0)s on byte
+;
+; Arguments
+; ---------
+; byte (8-bit string, r16): byte to ror
+; k (int, r17): amount to ror
+;
+; Return Values
+; -------------
+; 8-bit string, r16: byte ror'd k times
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; r16: byte
+; r17: k
+;
+; Stack Depth
+; -----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Special Notes
+; -------------
+; None
+rork:
+    ;;; arguments
+    .def byte = r16
+    .def k = r17
+
+  rorLoop:
+    cpi     k, 0
+    breq    rorDone
+    dec     k
+    lsr     byte
+    ; if carry is clear, we want to keep 0 in the msb
+    brcc    rorLoop
+    ; otherwise, if carry is set, want to put 1 in the msb
+    ori     byte, 0b10000000
+    jmp     rorLoop
+  rorDone:
     ret

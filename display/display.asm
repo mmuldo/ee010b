@@ -543,8 +543,8 @@ PlotPixel:
 
     
     ; prepare for Set/ClearBit function calls
-    ld r16, y
     mov r17, r
+    ld r16, y
     ; if redOn is TRUE...
     cpi redOn, TRUE
     brne ClearRedBufferCR_PlotPixel
@@ -1009,7 +1009,7 @@ MultiplexDisplay:
 
   RotateColumnMasks:
     lsr colMaskG
-    ror colMaskR
+    rol colMaskR
 
   StoreColumnMasks:
     sts columnMaskG, colMaskG

@@ -80,8 +80,13 @@ Start:                                  ;start the CPU after a reset
         rcall   InitDisplayVars
         rcall   InitTimer0
         sei
+        
+		ldi r16, -1
+		ldi r17, -1
+		ldi r18, -1
+		rcall PlotPixel
 
-    InfLoop: rcall InfLoop
+    InfLoop: jmp InfLoop
 
 .include "timers.asm"
 .include "ports.asm"
