@@ -7,16 +7,13 @@
 ;get the definitions for the device
 .include  "m64def.inc"
 .include    "util.inc"
-.include "util.asm"
+
 
 ;include all the .inc files since all .asm files are needed here (no linker)
 
-
 .dseg
-
-    zero:   .byte 1
-    test:   .byte 1
-
+					.byte 127
+	TopOfStack:		.byte 1
 
 
 .cseg
@@ -75,14 +72,11 @@ Start:                                  ;start the CPU after a reset
         ldi     r16, high(TopOfStack)
         out     sph, r16
 
-        .def zero = r21
-        ldi zero, 0
-        .def test = r22
-        ldi test, 0b01011000
-        .def ff = r23
-        ldi ff, 0xFF
+        
+		ldi		r16, 0xFF
+		ldi		r17, 8
 
+		call	ClearBit
+		nop
 
-        mov r16, zero
-        ldi r17, -1
-        rcall SetBit
+.include "util.asm"

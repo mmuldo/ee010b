@@ -79,29 +79,34 @@ ClearBit:
     ; bitNumber must be >= 0
     push r18
     ldi r18, TRUE
+    
+    ; save r16, r17 bc we need to overwrite them for function call
     push r16
     push r17
+    
     mov r16, bitNumber
     ldi r17, 0
     rcall CheckValid
+    ; recover r17 for next stuff and save it again
     pop r17
-    pop r16
+    push r17
 
     ; bitNumber must be <= 7 (byte length)
-    push r16
-    push r17
     ldi r16, 7
+    ; bitNumber already in r17
     mov r17, bitNumber
     rcall CheckValid
+    ; recover r16, r17
     pop r17
     pop r16
 
     cpi r18, TRUE
-    breq ClearBitBody
-    ret
+    ; put stack pointer back at caller's address
+    pop r18
+    ; if bitNumber not valid, just return
+    brne Return_ClearBit
 
-
-  ClearBitBody:
+    
     ;;; other needed registers
     ; r18: bit mask (this gets shifted appropriately)
     .def mask = r18
@@ -109,20 +114,22 @@ ClearBit:
     ldi mask, 0b11111110
 
     ;;; shift the bit mask left bitNumber times
+    ; save r16, r17 bc we need to overwrite for function call
     push r16
     push r17
+    
     mov r16, mask
-    ; set carry flag so that we rotate 1s back
-    sec
     ; rolk(mask, bitNumber)
     rcall rolk 
     mov mask, r16
+    ; recover r16, r17
     pop r17
     pop r16
 
-    ;;; set the bit in byte
+    ;;; clear the bit in byte
     and byte, mask
     pop mask
+  Return_ClearBit:
     ret
 
 
@@ -205,26 +212,31 @@ SetBit:
     ; bitNumber must be >= 0
     push r18
     ldi r18, TRUE
+
+	; save r16, r17 bc we need to overwrite them for function call
     push r16
     push r17
+
     mov r16, bitNumber
     ldi r17, 0
     rcall CheckValid
-    pop r17
-    pop r16
+	; recover r17 for next stuff and save it again
+	pop r17
+	push r17
 
     ; bitNumber must be <= 7 (byte length)
-    push r16
-    push r17
     ldi r16, 7
-    mov r17, bitNumber
+    ; bitNumber already in r17
     rcall CheckValid
+	; recover r16, r17
     pop r17
     pop r16
 
     cpi r18, TRUE
-    breq SetBitBody
-    ret
+	; put stack pointer back at caller's address
+	pop r18
+    ; if bitNumber not valid, just return
+    brne Return_SetBit
 
     ;;; other needed registers
     ; r18: bit mask (this gets shifted appropriately)
@@ -233,18 +245,23 @@ SetBit:
     ldi mask, 0x01
 
     ;;; shift the bit mask left bitNumber times
+	; save r16, r17 bc we need to overwrite for function call
     push r16
     push r17
     mov r16, mask
+	; r17 already contains bitNumber
     ; mask << bitNumber (lslk(mask, bitNumber))
-    lslk 
+    rcall lslk 
     mov mask, r16
+	; recover r16, r17
     pop r17
     pop r16
 
     ;;; set the bit in byte
     or byte, mask
     pop mask
+
+  Return_SetBit:
     ret
 
 
@@ -415,15 +432,15 @@ Saturate:
     cp value, lowerBound
     brge CheckTooLarge_Saturate
     ; saturate if it is
-    ldi value, lowerBound
+    mov value, lowerBound
     jmp Return_Saturate
 
     ;;; check if value > upperBound
-  CheckTooLarge:
+  CheckTooLarge_Saturate:
     cp upperBound, value
     brge Return_Saturate
     ; saturate if it is
-    ldi value, upperBound
+    mov value, upperBound
 
   Return_Saturate:
     ret
@@ -516,11 +533,11 @@ lslk:
 ;
 ; Description
 ; -----------
-; rotates byte left through carry k times
+; rotates byte left (not through carry)! k times
 ;
 ; Operational Description
 ; -----------------------
-; performs k rol's on byte
+; performs k (lsl -> adc 0)s on byte
 ;
 ; Arguments
 ; ---------
@@ -529,7 +546,7 @@ lslk:
 ;
 ; Return Values
 ; -------------
-; 8-bit string, r16: byte << k
+; 8-bit string, r16: byte rol'd k times
 ;
 ; Global Variables
 ; ----------------
@@ -583,12 +600,19 @@ rolk:
     ;;; arguments
     .def byte = r16
     .def k = r17
+    
+    ;;; other registers
+    .def zero = r18
+    push zero
+    ldi zero, 0
 
   rolLoop:
     cpi     k, 0
     breq    rolDone
-    rol     byte
+    lsl     byte
+    adc     byte, zero
     dec     k
     jmp     rolLoop
   rolDone:
+    pop zero
     ret
