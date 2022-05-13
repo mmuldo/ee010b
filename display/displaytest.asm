@@ -6,6 +6,11 @@
 
 ;get the definitions for the device
 .include  "m64def.inc"
+.include "timers.inc"
+.include "ports.inc"
+.include "switches.inc"
+.include "util.inc"
+.include "display.inc"
 
 
 ;include all the .inc files since all .asm files are needed here (no linker)
@@ -77,3 +82,6 @@ Start:                                  ;start the CPU after a reset
 
 .include "timers.asm"
 .include "ports.asm"
+.include "switches.asm"
+.include "util.asm"
+.include "display.asm"

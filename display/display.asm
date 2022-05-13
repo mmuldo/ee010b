@@ -1,5 +1,3 @@
-.cseg
-
 ;;;;;;;;;;;;;;;
 ; display.asm ;
 ;;;;;;;;;;;;;;;
@@ -1040,6 +1038,3 @@ MultiplexDisplay:
 DisplayEventHandler:
     rcall MultiplexDisplay
     ret
-
-
-.include "util.asm"

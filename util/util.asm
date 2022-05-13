@@ -1,5 +1,3 @@
-.include "util.inc"
-
 .cseg
 
 ; ClearBit(byte, bitNumber)

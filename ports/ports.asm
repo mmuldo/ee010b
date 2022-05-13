@@ -1,5 +1,3 @@
-.include "ports.inc"
-
 ;;;;;;;;;;;;;
 ; ports.asm ;
 ;;;;;;;;;;;;;
