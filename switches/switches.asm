@@ -612,7 +612,8 @@ DebounceUD_RET:
 ; -------------
 ; None
 DeRotLR:
-    PUSH    R17     ; LRRotGrayCode (current graycode)
+    PUSH	R16		; LRRotGrayCode (current graycode)
+	PUSH    R17     ; LRRotGrayCode (current graycode)
     PUSH    R18     ; for writing to LRRotLeft/Right
     PUSH    R19     ; LR rotary encoder gray code stack
     PUSH    R20     ; isolated bits of LR rotary encoder gray code stack
@@ -705,6 +706,7 @@ DeRotLR_RET:
     POP     R19
     POP     R18
     POP     R17
+	POP		R16
     RET
 
 
@@ -831,6 +833,7 @@ DeRotLR_RET:
 ; -------------
 ; None
 DeRotUD:
+	PUSH    R16     ; UDRotGrayCode (current graycode)
     PUSH    R17     ; UDRotGrayCode (current graycode)
     PUSH    R18     ; for writing to UDRotUp/Down
     PUSH    R19     ; UD rotary encoder gray code stack
@@ -925,6 +928,7 @@ DeRotUD_RET:
     POP     R19
     POP     R18
     POP     R17
+	POP		R16
     RET
 
 ; LRSwitch specification
