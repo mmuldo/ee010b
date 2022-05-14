@@ -964,6 +964,7 @@ MultiplexDisplay:
     
     ;;; adjust cursor vars and re-init if necessary
     dec changeCounter
+	sts cursorChangeCounter, changeCounter
     ; if cursorChangeCounter is at 0 ...
     cpi changeCounter, 0
     brne ReInitOffset

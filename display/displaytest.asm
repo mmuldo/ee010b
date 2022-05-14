@@ -80,11 +80,42 @@ Start:                                  ;start the CPU after a reset
         rcall   InitDisplayVars
         rcall   InitTimer0
         sei
-        
-		ldi r16, -1
-		ldi r17, -1
+
+		ldi r16, 1
+		ldi r17, 1
+		ldi r18, 2
+		rcall PlotPixel
+
+        ldi r16, 0
+		ldi r17, 0
+		ldi r18, 0
+		rcall PlotPixel
+
+        ldi r16, 5
+		ldi r17, 5
+		ldi r18, 1
+		rcall PlotPixel
+
+        ldi r16, 3
+		ldi r17, 4
+		ldi r18, 3
+		rcall PlotPixel
+
+        ldi r16, 2
+		ldi r17, 4
 		ldi r18, -1
 		rcall PlotPixel
+
+        ldi r16, 5
+		ldi r17, 6
+		ldi r18, 4
+		rcall PlotPixel
+
+		ldi r16, 5
+		ldi r17, 4
+		ldi r18, -1
+		ldi r19, 4
+		rcall SetCursor
 
     InfLoop: jmp InfLoop
 
