@@ -34,6 +34,10 @@
 ; Revision History
 ; ----------------
 ; 04/28/2022    Matt Muldowney      timer0 initialization
+; 05/10/2022    Matt Muldowney      moved timer 0event handler here 
+;                                       (previously in switches.asm)
+; 05/10/2022    Matt Muldowney      added multiplexdisplay to timer0 event 
+;                                       handler
 
 .CSEG
 
@@ -126,13 +130,89 @@ InitTimer0:
     RET
 
 
+
+
+
+
+; Timer0EventHandler Specification
+; ================================
+;
+; Description
+; -----------
+; timer0 interrupt event handler. gets run once every 1 ms.
+;
+; Operational Description
+; -----------------------
+; runs switch debouncing and display multiplexing logic
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 1 byte
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
 Timer0EventHandler:
+    ; save sreg
     in r0, sreg
     push r0
 
     rcall SwitchEventHandler
     rcall MultiplexDisplay
 
+    ; recover sreg
     pop r0
     out sreg, r0
 

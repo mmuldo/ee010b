@@ -6,7 +6,10 @@
 ;
 ; Revision History
 ; ----------------
-; 05/07/2022    Matt Muldowney      display matrix stuff
+; 05/07/2022    Matt Muldowney      display matrix consts
+; 05/09/2022    Matt Muldowney      cursor consts and color consts
+; 05/10/2022    Matt Muldowney      changed cursor counter init to 250 ms
+;                                       (from 500 ms)
 
 ; LED display matrix
 ; ==================
@@ -50,3 +53,11 @@
 .equ    RED     = 1
 .equ    GREEN   = 2
 .equ    YELLOW  = 3
+
+
+; colors
+; ======
+.equ    PIXEL_OFF     = 0
+.equ    PIXEL_RED     = 1
+.equ    PIXEL_GREEN   = 2
+.equ    PIXEL_YELLOW  = 3

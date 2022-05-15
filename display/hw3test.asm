@@ -14,6 +14,8 @@
 ; Revision History:
 ;    5/15/18  Glen George               initial revision
 ;    4/21/22  Glen George               added constants for test table sizes
+;    5/14/22  Matt Muldowney            downloaded
+;    5/14/22  Matt Muldowney            added Start function for running tests
 
 
 
@@ -24,7 +26,6 @@
 .include  "m64def.inc"
 
 ; local include files
-.include  "m64def.inc"
 .include "timers.inc"
 .include "ports.inc"
 .include "switches.inc"

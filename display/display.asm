@@ -7,6 +7,10 @@
 ; Contains all logic for the LED grid display including:
 ;   * InitDisplayVars: inits display shared vars
 ;   * MultiplexDisplay: cycles through which column to display
+;   * ClearDisplay: turns all LEDs off
+;   * PlotPixel: sets a pixel in the grid to a specified color
+;   * SetCursor: blinks a pixel in the grid between 2 specified colors
+;       (indicating the cursor is at that position)
 ;
 ; Inputs
 ; ------
@@ -20,7 +24,7 @@
 ;
 ; User Interface
 ; --------------
-; None
+; 8 x 8 LED grid, where each pixel contains a red LED and a green LED
 ;
 ; Error Handling
 ; --------------
@@ -37,6 +41,12 @@
 ; Revision History
 ; ----------------
 ; 05/07/2022    Matt Muldowney      dseg and multiplexing logic
+; 05/08/2022    Matt Muldowney      revised functional specs
+; 05/09/2022    Matt Muldowney      implemented ClearDisplay, PlotPixel,
+;                                       SetCursor
+; 05/11/2022    Matt Muldowney      minor bug fixes (mostly related to
+;                                       unbalanced push/pop in functions)
+; 05/14/2022    Matt Muldowney      docs
 
 .dseg
 
@@ -187,7 +197,6 @@ SetCursor:
     push green2        ; cursor green color 2
 
 
-
     ;;; set the (row, column) position of the cursor
     sts cursorRow, r
     sts cursorColumn, c
@@ -248,6 +257,7 @@ SetCursor:
 
 
 
+
 ; ClearDisplay()
 ; ==============
 ;
@@ -303,7 +313,7 @@ SetCursor:
 ;
 ; Registers Used
 ; --------------
-; None
+; y, z
 ;
 ; Stack Depth
 ; -----------
@@ -336,6 +346,7 @@ ClearDisplay:
     ldi zl, low(greenBuffer)
     ldi zh, high(greenBuffer)
 
+
     ;;; turn off every column in red and green buffers
     ldi idx, 0
   ClearBuffersLoop:
@@ -350,6 +361,9 @@ ClearDisplay:
     pop idx
     pop blank
     ret
+
+
+
 
 
 
@@ -419,7 +433,7 @@ ClearDisplay:
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 3 bytes
 ;
 ; Limitations
 ; -----------
@@ -432,17 +446,6 @@ ClearDisplay:
 ; Special Notes
 ; -------------
 ; None
-;
-; Pseudocode
-; ----------
-; 
-; red = TRUE & color
-; red << r
-; redBuffer[c] |= red
-; 
-; green = color >> 1
-; green << r
-; greenBuffer[c] |= green
 PlotPixel:
     ;;; arguments
     .def r = r16        ; r16: display row
@@ -455,7 +458,6 @@ PlotPixel:
     push color
     ldi r18, TRUE ; we can use this for each call since CheckValid only
                     ; changes its value if invalid
-
 
     ; save r, c since overwritten by function call
     push r
@@ -506,7 +508,7 @@ PlotPixel:
     
 
     ;;; check validity of color, set to nearest bound (OFF or YELLOW) if out
-    ;;; of bounds
+    ;;;     of bounds
     ; save r, c since overwritten by function call
     push r
     push c
@@ -578,6 +580,8 @@ PlotPixel:
 
   Return_PlotPixel:
     ret
+
+
 
 
 ; InitDisplayVars()
@@ -690,7 +694,7 @@ InitDisplayVars:
     ldi temp, CURSOR_COL_INIT
     sts cursorColumn, temp
 
-    ; init cursor color
+    ; init cursor colors
     ldi temp, CURSOR_RED_COLOR1_INIT
     sts cursorRedColor1, temp
     ldi temp, CURSOR_GREEN_COLOR1_INIT
@@ -702,6 +706,11 @@ InitDisplayVars:
 
     pop temp
     ret
+
+
+
+
+
 
 
 ; MultiplexDisplay()
@@ -779,12 +788,11 @@ InitDisplayVars:
 ;
 ; Registers Used
 ; --------------
-; Y
-; [others]
+; y
 ;
 ; Stack Depth
 ; -----------
-; [unknown]
+; 8 bytes
 ;
 ; Limitations
 ; -----------
@@ -797,46 +805,6 @@ InitDisplayVars:
 ; Special Notes
 ; -------------
 ; None
-;
-; Pseudocode
-; ----------
-;
-; save sreg
-; turn off columns
-;
-; IF columnMaskG != 0:
-;   load greenBuffer into Y
-; ELSE:
-;   load redBuffer into Y
-; add ledBufferOffset to Y
-; 
-; ouput Y to port c
-; IF ledBufferOffset == cursorColumn and useCursorColor2:
-;   IF columnMaskG != 0:
-;       PortC[cursorRow] = cursorGreen2
-;   ELSE:
-;       PortC[cursorRow] = cursorRed2
-;
-; cursorChangeCounter--
-; IF cursorChangeCounter == 0:
-;   useCursorColor2 = !useCursorColor2
-;   reinit cursorChangeCounter to 500
-;
-; IF ledBufferOffset == 7:
-;   reinit ledBufferOffset to 0
-; ELSE:
-;   increment ledBufferOffset
-; 
-; output columnMaskG to port a
-; output columnMaskR to port d
-; IF columnMaskG == 0x00 and columnMaskR == 0x01:
-;   reinit columnMaskR to 0x80
-;   reinit columnMaskG to 0x00
-; ELSE:
-;   lsr columnMaskG
-;   ror columnMaskR
-;
-; write back sreg
 MultiplexDisplay:
     ;;; registers needed
     ; r16: temporary stuff
@@ -1025,6 +993,5 @@ MultiplexDisplay:
     pop colMaskR
     pop colMaskG
     pop temp
-
 
     ret

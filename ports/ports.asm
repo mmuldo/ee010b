@@ -32,7 +32,8 @@
 ;
 ; Revision History
 ; ----------------
-; 04/28/2022    Matt Muldowney      PortE initialization
+; 04/28/2022    Matt Muldowney      switch port init (port e)
+; 05/10/2022    Matt Muldowney      display ports init (ports a, c, d)
 
 .CSEG
 
