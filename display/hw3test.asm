@@ -651,12 +651,10 @@ TestSSCTab:
 
         ; number of entries in the table
         .EQU    TestSSCTab_ENTRIES = (PC - TestSSCTab) / TestSSCTab_ENTRY_SIZE
-		
-		
-		
-		
-		
-		
+
+
+
+
 ; include asm files here (since no linker)
 .include "timers.asm"
 .include "ports.asm"
