@@ -1,3 +1,43 @@
+;;;;;;;;;;;;
+; util.asm ;
+;;;;;;;;;;;;
+
+; Description
+; -----------
+; Contains utility functions for other files
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; User Interface
+; --------------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Revision History
+; ----------------
+; 05/07/2022    Matt Muldowney      shifting multiple times
+; 05/08/2022    Matt Muldowney      clearbit and setbit
+
+
+
+
 .cseg
 
 ; ClearBit(byte, bitNumber)
