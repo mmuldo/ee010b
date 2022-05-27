@@ -1,0 +1,100 @@
+; Div24by16(dividend, divisor)
+; ============================
+;
+; Description
+; -----------
+; Divides the 24-bit unsigned value passed in r18|r17|r16 by the 16-bit
+; unsigned value passed in r21|r20. The quotient is returned in r18|r17|r16
+; and the remainder is returned in r3|r2.
+;
+; Operational Description
+; -----------------------
+; Divides r18|r17|r16 by r21|r20 using a restoring division algorithm with
+; a 16-bit temporary register r3|r2 and shifting the quotient into r18|r17|r16
+; as the dividend is shifted out. Note that the carry flag is the inverted
+; quotient bit (and this is what is shifted into the quotient, so at the end
+; the enitre quotient is inverted.
+;
+; Arguments
+; ---------
+; dividend (unsigned int, r18|r17|r16)
+; divisor (unsigned int, r21|r20)
+;
+; Return Values
+; -------------
+; unsigned int, r18|r17|r16: the quotient
+; unsigned int, r3|r2: the remainder
+;
+; Global Variables
+; ----------------
+; none
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; bitcnt (unsigned int): number of bits left in division
+;
+; Inputs
+; ------
+; none
+;
+; Outputs
+; -------
+; none
+;
+; Error Handling
+; --------------
+; none
+;
+; Algorithms
+; ----------
+; restoring division
+;
+; Data Structures
+; ---------------
+; none
+;
+; Registers Used
+; --------------
+; r18, r17, r16, r3, r2
+;
+; Stack Depth
+; --------------
+; [unknown]
+;
+; Limitations
+; -----------
+; none
+;
+; Known Bugs
+; ----------
+; none
+;
+; Special Notes
+; -------------
+; none
+;
+; Pseudocode
+; ----------
+;
+; bitcnt = 24
+; remainder = 0
+;
+; WHILE bitcnt > 0:
+;   rol dividend
+;   rol remainder
+;
+;   IF can perform (remainder - divisor) without carry:
+;       remainder = remainder - divisor
+;   ENDIF
+;
+;   bitcnt--
+; ENDWHILE
+;
+; rol dividend
+; quotient = invert dividend
+;
+; return (quotient, remainder)

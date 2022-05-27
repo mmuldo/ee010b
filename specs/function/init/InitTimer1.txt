@@ -1,0 +1,80 @@
+; InitTimer1
+; ==========
+;
+; Description
+; -----------
+; Inits Timer1 in toggle mode and phase and frequency correct mode with a
+; prescalar of 8. Also, initially disables timer1a output compare match
+; interrupts.
+;
+; Operational Description
+; -----------------------
+; Outputs approprate values to control registers TCCR1A and TCCR1B and clears
+; appropriate bit in TIMSK.
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; none
+;
+; Global Variables
+; ----------------
+; none
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; none
+;
+; Outputs
+; -------
+; none
+;
+; Error Handling
+; --------------
+; none
+;
+; Algorithms
+; ----------
+; none
+;
+; Data Structures
+; ---------------
+; none
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; --------------
+; 2 bytes
+;
+; Limitations
+; -----------
+; none
+;
+; Known Bugs
+; ----------
+; none
+;
+; Special Notes
+; -------------
+; none
+;
+; Pseudocode
+; ----------
+;
+; out TCCR1A, TIMER1A_CTR
+; out TCCR1B, TIMER1A_CTR
+; cbi TIMSK, OCIE1A_BIT

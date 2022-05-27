@@ -1,0 +1,80 @@
+; InitSerialIO
+; ============
+;
+; Description
+; -----------
+; Initializes serial I/O by setting up the SPI in master mode 0 with
+; interrupts disabled, SPI enabled, msb written/read first, and with a
+; prescalar of 8.
+;
+; Operational Description
+; -----------------------
+; Sets chip select to an output.
+; Sets the SPCR register such that interrupts are disabled, SPI enabled,
+; MSB written first, master mode 0, and prescalar 8.
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; eeromPort (8-bit string): R
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; EEROM chip select port
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; None
+;
+; Stack Depth
+; --------------
+; [unknown]
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+;
+; Pseudocode
+; ----------
+;
+; sbi eeromPort, EEROM_CS_BIT
+; out SPCR, EEROM_CTR

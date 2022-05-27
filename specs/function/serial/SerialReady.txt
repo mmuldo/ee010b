@@ -1,0 +1,79 @@
+; SerialReady
+; ===========
+;
+; Description
+; -----------
+; checks serial status register to see if it's ready for R/W (waits until it
+; is ready)
+;
+; Operational Description
+; -----------------------
+; loops until SPIF is high
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; none
+;
+; Global Variables
+; ----------------
+; none
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; tempSPIF
+;
+; Inputs
+; ------
+; none
+;
+; Outputs
+; -------
+; none
+;
+; Error Handling
+; --------------
+; none
+;
+; Algorithms
+; ----------
+; none
+;
+; Data Structures
+; ---------------
+; none
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; --------------
+; 1 byte
+;
+; Limitations
+; -----------
+; none
+;
+; Known Bugs
+; ----------
+; none
+;
+; Special Notes
+; -------------
+; none
+;
+; Pseudocode
+; ----------
+;
+; tmpSPIF = SPSR and SPIF_MASK
+; WHILE tmpSPIF != SPIF_MASK:
+;   tmpSPIF = SPSR and SPIF_MASK
+; ENDWHILE

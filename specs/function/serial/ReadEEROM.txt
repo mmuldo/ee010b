@@ -1,0 +1,100 @@
+; ReadEEROM(a, p, n)
+; ==================
+;
+; Description
+; -----------
+; reads n (r16) bytes of data from serial EEROM address a (r17) and stores it 
+; at data address p (y).
+;
+; Operational Description
+; -----------------------
+; starting from address floor(a/2), reads two bytes at a time (since EEROM 
+; stores words) and then stores them at the corresponding data address
+; p + offset. if a is odd, the very first byte read is ignored. if n is odd,
+; the very last byte read is ignored.
+;
+; Arguments
+; ---------
+; n (int, r16): number of bytes to read and store
+; a (8-bit address, r17): the EEROM byte address to start reading bytes from
+; p (16-bit address, y): the data address to start storing bytes at
+;
+; Return Values
+; -------------
+; none
+;
+; Global Variables
+; ----------------
+; none
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; numBytes (int): RW
+;
+; Inputs
+; ------
+; none
+;
+; Outputs
+; -------
+; none
+;
+; Error Handling
+; --------------
+; (a) + n exceeds the amount of EEROM memory:
+;   in this case, n is too large, so change n to be small enough and then
+;   carry out the algorithm
+;
+; Algorithms
+; ----------
+; none
+;
+; Data Structures
+; ---------------
+; none
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; --------------
+; [unknown]
+;
+; Limitations
+; -----------
+; none
+;
+; Known Bugs
+; ----------
+; none
+;
+; Special Notes
+; -------------
+; none
+;
+; Pseudocode
+; ----------
+;
+; WHILE (numBytes > 0):
+;   IF (a is even) or (numBytes == n and n is odd):
+;       set CS high
+;       output read command to SPI
+;   ENDIF
+;
+;   IF (numBytes != n or n is even):
+;       read and store byte
+    ENDIF
+;
+;   IF (a is odd) or (numBytes == 1):
+;       set CS low
+;   ENDIF
+;
+;   inc a
+;   inc p
+;   dec numBytes
+; ENDWHILE

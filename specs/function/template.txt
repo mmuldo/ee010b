@@ -1,0 +1,74 @@
+; {name}
+; =================
+;
+; Description
+; -----------
+; 
+;
+; Operational Description
+; -----------------------
+; 
+;
+; Arguments
+; ---------
+; 
+;
+; Return Values
+; -------------
+; 
+;
+; Global Variables
+; ----------------
+; 
+;
+; Shared Variables
+; ----------------
+; 
+;
+; Local Variables
+; ---------------
+; 
+;
+; Inputs
+; ------
+; 
+;
+; Outputs
+; -------
+; 
+;
+; Error Handling
+; --------------
+; 
+;
+; Algorithms
+; ----------
+; 
+;
+; Data Structures
+; ---------------
+; 
+;
+; Registers Used
+; --------------
+; 
+;
+; Stack Depth
+; --------------
+; 
+;
+; Limitations
+; -----------
+; 
+;
+; Known Bugs
+; ----------
+; 
+;
+; Special Notes
+; -------------
+; 
+;
+; Pseudocode
+; ----------
+;
