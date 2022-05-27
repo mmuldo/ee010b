@@ -45,9 +45,9 @@
 ;
 ; Error Handling
 ; --------------
-; (a) + n exceeds the amount of EEROM memory:
-;   in this case, n is too large, so change n to be small enough and then
-;   carry out the algorithm
+; in either of the following cases, the function is aborted:
+;   (a) + n exceeds the amount of EEROM memory
+;   (p) + n exceeds the amount of data memory
 ;
 ; Algorithms
 ; ----------
@@ -80,21 +80,39 @@
 ; Pseudocode
 ; ----------
 ;
-; WHILE (numBytes > 0):
-;   IF (a is even) or (numBytes == n and n is odd):
+; check a+n is within range
+; check p+n is within range
+;
+; # edge case: starting addr is odd
+; IF a is odd:
+;   set CS high
+;
+;   eeromAddr = a / 2 - 1
+;   output read command to SPI at eeromAddr
+;   first byte is garbage
+;   store second byte
+;
+;   set CS low
+;
+;   a++
+;   p++
+;   n--
+; ENDIF
+;
+; WHILE (n > 0):
+;   IF (a is even):
 ;       set CS high
-;       output read command to SPI
+;       eeromAddr = a / 2
+;       output read command to SPI at eeromAddr
 ;   ENDIF
 ;
-;   IF (numBytes != n or n is even):
-;       read and store byte
-    ENDIF
+;   read and store byte
 ;
 ;   IF (a is odd) or (numBytes == 1):
 ;       set CS low
 ;   ENDIF
 ;
-;   inc a
-;   inc p
-;   dec numBytes
+;   a++
+;   p++
+;   n--
 ; ENDWHILE
