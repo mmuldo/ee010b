@@ -38,6 +38,9 @@
 ;                                       (previously in switches.asm)
 ; 05/10/2022    Matt Muldowney      added multiplexdisplay to timer0 event 
 ;                                       handler
+; 05/27/2022    Matt Muldowney      timsk init in inittimer0 now only sets
+;                                       timer0's respective interrupt bit
+; 05/27/2022    Matt Muldowney      timer1 initialization
 
 .CSEG
 
@@ -115,19 +118,18 @@
 ; -------------
 ; None
 InitTimer0:
-    PUSH    R16
+    push    r16
 
-    LDI     R16, TIMER0_CTR
-    OUT     TCCR0, R16
+    ldi     r16, TIMER0_CTR
+    out     tccr0, r16
 
-    LDI     R16, TIMER0_COMP
-    OUT     OCR0, R16
+    ldi     r16, TIMER0_COMP
+    out     ocr0, r16
 
-    LDI     R16, TIMER0_MSK
-    OUT     TIMSK, R16
+    sbi     timsk, OCIE0_BIT
 
-    POP     R16
-    RET
+    pop     r16
+    ret
 
 
 
@@ -232,3 +234,102 @@ Timer0EventHandler:
 	pop r0
 
     reti
+
+
+
+
+; InitTimer1
+; ==========
+;
+; Description
+; -----------
+; Inits Timer1 in toggle mode and phase and frequency correct mode with a
+; prescalar of 8. Also, initially disables timer1a output compare match
+; interrupts.
+;
+; Operational Description
+; -----------------------
+; Outputs approprate values to control registers TCCR1A and TCCR1B and clears
+; appropriate bit in TIMSK.
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; none
+;
+; Global Variables
+; ----------------
+; none
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; none
+;
+; Outputs
+; -------
+; none
+;
+; Error Handling
+; --------------
+; none
+;
+; Algorithms
+; ----------
+; none
+;
+; Data Structures
+; ---------------
+; none
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; --------------
+; 2 bytes
+;
+; Limitations
+; -----------
+; none
+;
+; Known Bugs
+; ----------
+; none
+;
+; Special Notes
+; -------------
+; none
+;
+; Pseudocode
+; ----------
+;
+; out TCCR1A, TIMER1A_CTR
+; out TCCR1B, TIMER1B_CTR
+; cbi TIMSK, OCIE1A_BIT
+InitTimer1:
+    ; temporary register
+    .def    tmp = r16
+    push    tmp
+
+    ldi     tmp, TIMER1A_CTR
+    out     tccr1a, tmp
+
+    ldi     tmp, TIMER1B_CTR
+    out     tccr1b, tmp
+
+    cbi     timsk, OCIE1A_BIT
+
+    pop     tmp
+    ret

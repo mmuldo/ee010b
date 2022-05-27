@@ -34,6 +34,7 @@
 ; ----------------
 ; 05/07/2022    Matt Muldowney      shifting multiple times
 ; 05/08/2022    Matt Muldowney      clearbit and setbit
+; 05/27/2022    Matt Muldowney      div24by16
 
 
 
@@ -824,4 +825,179 @@ rork:
     ori     byte, 0b10000000
     jmp     rorLoop
   rorDone:
+    ret
+
+
+
+
+; Div24by16(dividend, divisor)
+; ============================
+;
+; Description
+; -----------
+; Divides the 24-bit unsigned value passed in r18|r17|r16 by the 16-bit
+; unsigned value passed in r21|r20. The quotient is returned in r18|r17|r16
+; and the remainder is returned in r3|r2.
+;
+; Operational Description
+; -----------------------
+; Divides r18|r17|r16 by r21|r20 using a restoring division algorithm with
+; a 16-bit temporary register r3|r2 and shifting the quotient into r18|r17|r16
+; as the dividend is shifted out. Note that the carry flag is the inverted
+; quotient bit (and this is what is shifted into the quotient, so at the end
+; the enitre quotient is inverted.
+;
+; Arguments
+; ---------
+; dividend (unsigned int, r18|r17|r16)
+; divisor (unsigned int, r21|r20)
+;
+; Return Values
+; -------------
+; unsigned int, r18|r17|r16: the quotient
+; unsigned int, r3|r2: the remainder
+;
+; Global Variables
+; ----------------
+; none
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; bitcnt (unsigned int): number of bits left in division
+;
+; Inputs
+; ------
+; none
+;
+; Outputs
+; -------
+; none
+;
+; Error Handling
+; --------------
+; none
+;
+; Algorithms
+; ----------
+; restoring division
+;
+; Data Structures
+; ---------------
+; none
+;
+; Registers Used
+; --------------
+; r18, r17, r16, r3, r2
+;
+; Stack Depth
+; --------------
+; [unknown]
+;
+; Limitations
+; -----------
+; none
+;
+; Known Bugs
+; ----------
+; none
+;
+; Special Notes
+; -------------
+; none
+;
+; Pseudocode
+; ----------
+;
+; bitcnt = 24
+; remainder = 0
+;
+; WHILE bitcnt > 0:
+;   rol dividend
+;   rol remainder
+;
+;   IF can perform (remainder - divisor) without carry:
+;       remainder = remainder - divisor
+;   ENDIF
+;
+;   bitcnt--
+; ENDWHILE
+;
+; rol dividend
+; quotient = invert dividend
+;
+; return (quotient, remainder)
+Div24by16:
+    ;;; arguments
+    ; dividend
+    .def    dividendH = r18
+    .def    dividendM = r17
+    .def    dividendL = r16
+
+    ; divisor
+    .def    divisorH = r21
+    .def    divisorL = r22
+
+
+    ;;; return values
+    ; quotient
+    .def    quotientH = r18
+    .def    quotientM = r17
+    .def    quotientL = r16
+
+    ; remainder
+    .def    remainderH = r3
+    .def    remainderL = r2
+    clr     remainderH
+    clr     remainderL
+
+    
+    ;;; other registers we need
+    ; number of bits to divide into
+    .def    bitcnt = r22
+    push    r22
+    ldi     r22, 24
+
+
+    ;;; division loop
+  Div24by16Loop:
+    ; rotate bit into remainder (and carry into dividend registers)
+    rol     dividendL
+    rol     dividendM
+    rol     dividendH
+    rol     remainderL
+    rol     remainderH
+
+    ; check if can subtract divisor from remainder
+    cp      remainderL, divisorL
+    cpc     remainderH, divisorH
+    brcs    Div24by16SkipSub
+    ; if can subtract divisor from remainder, do it
+    sub     remainderL, divisorL
+    sbc     remainderH, divisorH
+  Div16SkipSub:
+    ; if can't subtract divisor from remainder, skip it
+    ; note that C = 0 if subtracted, C = 1 if not
+
+    ; dec loop counter
+    dec     bitcnt
+    ; continue looping if bitcnt > 0, otherwise exit loop
+    brne    Div24by16Loop
+
+    ;;; final steps
+    ; shift last quotient bit in
+    rol     dividendL
+    rol     dividendM
+    rol     dividendH
+
+    ; invert dividend to get quotient (carry flag is inverse of quotient bit)
+    com     dividendL
+    com     dividendM
+    com     dividendH
+
+
+    pop bitcnt
     ret

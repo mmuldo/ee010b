@@ -72,11 +72,13 @@ Start:                                  ;start the CPU after a reset
         ldi     r16, high(TopOfStack)
         out     sph, r16
 
-        
-		ldi		r16, 0xFF
-		ldi		r17, 8
+    UtilTestLoop:
+        ; break point here
+        ; ldi dividend into r18|r17|r16, divisor into r21|r20
+        ; quotient will be in r18|r17|r16, remainder will be in r3|r2
+        nop
 
-		call	ClearBit
-		nop
+		rcall	Div24by16
+        rjmp    UtilTestLoop
 
 .include "util.asm"
