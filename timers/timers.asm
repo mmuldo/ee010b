@@ -118,17 +118,28 @@
 ; -------------
 ; None
 InitTimer0:
-    push    r16
+    ;;; registers needed
+    ; tmp register
+    .def    tmp = r16
+    push    tmp
 
-    ldi     r16, TIMER0_CTR
-    out     tccr0, r16
+    ; register to in timsk
+    .def    timskReg = r17
+    push    timskReg
+    clr     timskReg
 
-    ldi     r16, TIMER0_COMP
-    out     ocr0, r16
+    ldi     tmp, TIMER0_CTR
+    out     tccr0, tmp
 
-    sbi     timsk, OCIE0_BIT
+    ldi     tmp, TIMER0_COMP
+    out     ocr0, tmp
 
-    pop     r16
+    ; set OCIE0_BIT in timsk
+    ori     timskReg, OCIE0_BIT
+    out     timsk, timskReg
+
+    pop     timskReg
+    pop     tmp
     ret
 
 
@@ -243,14 +254,13 @@ Timer0EventHandler:
 ;
 ; Description
 ; -----------
-; Inits Timer1 in toggle mode and phase and frequency correct mode with a
-; prescalar of 8. Also, initially disables timer1a output compare match
-; interrupts.
+; Inits Timer1 in toggle mode and phase and frequency correct mode with an
+; initial prescalar of 0 (to turn off speaker).
 ;
 ; Operational Description
 ; -----------------------
-; Outputs approprate values to control registers TCCR1A and TCCR1B and clears
-; appropriate bit in TIMSK.
+; Outputs approprate values to control registers TCCR1A and TCCR1B
+; (TCCR1B initially set such that speaker is off).
 ;
 ; Arguments
 ; ---------
@@ -326,10 +336,8 @@ InitTimer1:
     ldi     tmp, TIMER1A_CTR
     out     tccr1a, tmp
 
-    ldi     tmp, TIMER1B_CTR
+    ldi     tmp, TIMER1B_CTR_PRESCALE0
     out     tccr1b, tmp
-
-    cbi     timsk, OCIE1A_BIT
 
     pop     tmp
     ret

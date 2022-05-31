@@ -195,3 +195,70 @@ InitDisplayPorts:
 
     pop outp
     ret
+
+
+; InitSoundPort Specification
+; ============================
+;
+; Description
+; -----------
+; Initializes speaker port (port b bit 5) to output
+;
+; Operational Description
+; -----------------------
+; Sets DDRB[5] to 1
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; DDRB (8-bit register)
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+InitSoundPort:
+    sbi     ddrb, SPKR_PORT_BIT
+    ret

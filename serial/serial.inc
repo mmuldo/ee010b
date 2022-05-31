@@ -15,6 +15,15 @@
 ; bit on EEROM port at which chip-select is controlled
 ; ----------------------------------------------------
 .equ    EEROM_CS_BIT    = 0
+; bit on EEROM port at which SCK is controlled
+; ----------------------------------------------------
+.equ    EEROM_SCK_BIT  = 1
+; bit on EEROM port at which MOSI is controlled
+; ----------------------------------------------------
+.equ    EEROM_MOSI_BIT  = 2
+; bit on EEROM port at which MISO is controlled
+; ----------------------------------------------------
+.equ    EEROM_MISO_BIT  = 3
 
 ; spi control register (for our purposes)
 ; ---------------------------------------

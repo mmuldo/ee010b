@@ -30,6 +30,8 @@
 .include "switches.inc"
 .include "util.inc"
 .include "display.inc"
+.include "serial.inc"
+.include "sound.inc"
 
 
 ;the data segment
@@ -37,15 +39,15 @@
 
 .dseg
 
+		        .byte 127
+        TopOfStack:	.byte 1
 
-    ; buffer for data read from the EEROM
-    ReadBuffer:     .BYTE   128             ;EEROM is 1024 bits
+        ; buffer for data read from the EEROM
+        ReadBuffer:     .BYTE   128             ;EEROM is 1024 bits
     
-    ; buffer containing the expected data from the EEROM
-    CompareBuffer:  .BYTE   128             ;EEROM is 1024 bits
+        ; buffer containing the expected data from the EEROM
+        CompareBuffer:  .BYTE   128             ;EEROM is 1024 bits
 
-					.byte 127
-	TopOfStack:		.byte 1
 
 
 .cseg
@@ -104,21 +106,21 @@ Start:                                  ;start the CPU after a reset
 
         rcall   InitSwitchPort
         rcall   InitSwitchVars
-		rcall	InitDisplayPorts
+        rcall	InitDisplayPorts
         rcall   InitDisplayVars
+        rcall   InitSoundPort
+        rcall   InitSerialIO
         rcall   InitTimer0
         rcall   InitTimer1
         ;; initialize speaker by playing 0 Hz frequency
-        ;ldi     r17, 0
-        ;ldi     r16, 0
-        ;rcall   PlayNote
+        ldi     r17, 0
+        ldi     r16, 0
+        rcall   PlayNote
         sei
 
-        rcall EEROMSoundTest
+        rcall ReadEEROMTests
 
 
-
-.cseg
 
 
 
@@ -522,3 +524,4 @@ EEROMDataTab:
 .include "util.asm"
 .include "display.asm"
 .include "sound.asm"
+.include "serial.asm"

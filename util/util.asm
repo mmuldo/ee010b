@@ -939,14 +939,7 @@ Div24by16:
 
     ; divisor
     .def    divisorH = r21
-    .def    divisorL = r22
-
-
-    ;;; return values
-    ; quotient
-    .def    quotientH = r18
-    .def    quotientM = r17
-    .def    quotientL = r16
+    .def    divisorL = r20
 
     ; remainder
     .def    remainderH = r3
@@ -978,7 +971,7 @@ Div24by16:
     ; if can subtract divisor from remainder, do it
     sub     remainderL, divisorL
     sbc     remainderH, divisorH
-  Div16SkipSub:
+  Div24by16SkipSub:
     ; if can't subtract divisor from remainder, skip it
     ; note that C = 0 if subtracted, C = 1 if not
 

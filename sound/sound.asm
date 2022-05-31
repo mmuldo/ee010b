@@ -125,14 +125,20 @@ PlayNote:
     .def    fH = r17
     .def    fL = r16
 
+    ;;; other needed registers
+    ; register to in timsk
+    .def    timskReg = r22
+    push    timskReg
+    in      timskReg, timsk
 
     ;;; check if f is 0 Hz
     tst     fH
     brne    PlayNoteNonZero
     tst     fL
     brne    PlayNoteNonZero
-    ; if f = 0 Hz, turn speaker off
-    cbi     timsk, OCIE1A_BIT
+    ; if f = 0 Hz, turn speaker off by setting presecaler to 0
+    ldi     tmp, TIMER1B_CTR_PRESCALE0
+    out     tccr1b, tmp
     ; and we're done
     jmp     PlayNoteRet
 
@@ -167,7 +173,7 @@ PlayNote:
 
     ;;; check if quotient is too large
     tst     quotientH
-    brne    PlayNoteOutToSpkr
+    breq    PlayNoteOutToSpkr
     ; if quotient too large, set to max 16-bit value
     ldi     quotientM, high(MAX_16BIT)
     ldi     quotientL, low(MAX_16BIT)
@@ -176,12 +182,14 @@ PlayNote:
   PlayNoteOutToSpkr:
     out     ocr1ah, quotientM
     out     ocr1al, quotientL
-    ; turn speaker on
-    sbi     timsk, OCIE1A_BIT
+    ; turn speaker on by setting prescalar to 8
+    ori     tmp, TIMER1B_CTR_PRESCALE8
+    out     tccr1b, tmp
 
     ;;; now we're done
     pop dividendH
     pop divisorL
     pop divisorH
   PlayNoteRet:
+    pop timskReg
     ret

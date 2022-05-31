@@ -126,8 +126,14 @@ InitSerialIO:
     .def    temp = r16
     push temp
 
-    ; set chip-select high
+    ; set chip-select high initially
     sbi     ddrb, EEROM_CS_BIT
+    ; set sck to output
+    sbi     ddrb, EEROM_SCK_BIT
+    ; set master (avr) -> slave (eerom) as output 
+    sbi     ddrb, EEROM_MOSI_BIT
+    ; set master (avr) <- slave (eerom) as input 
+    cbi     ddrb, EEROM_MISO_BIT
 
     ; set spi control register
     ldi     temp, EEROM_CTR
@@ -363,8 +369,8 @@ ReadEEROM:
     push    eeromAddr
 
     ; register for spi commands
-    .def    spicmd = r19
-    push    spicmd
+    .def    spiData = r19
+    push    spiData
 
     ; registers for testing argument validity
     .def    testL = r20
@@ -412,19 +418,20 @@ ReadEEROM:
     sbi     ddrb, EEROM_CS_BIT
 
     ; output read command
-    ldi     spicmd, READL
-    out     spdr, spicmd
-    ldi     spicmd, READH
-    or      spicmd, eeromAddr
+    ldi     spiData, READH
+    out     spdr, spiData
+    ldi     spiData, READL
+    or      spiData, eeromAddr
     rcall   SerialReady
-    out     spdr, spicmd
+    out     spdr, spiData
     
     ; first byte is garbage
     rcall   SerialReady
 
     ; store second byte
     rcall   SerialReady
-    st      y+, spdr
+    in      spiData, spdr
+    st      y+, spiData
     
     ; set chip select low
     cbi     ddrb, EEROM_CS_BIT
@@ -436,7 +443,7 @@ ReadEEROM:
 
   ReadEEROMWhile:
     ;;; check if there are still bytes to read
-    tst     numBytes
+    tst     n
     ; if no more bytes, we're done
     breq    ReadEEROMRet
     ; otherwise, do loop
@@ -453,32 +460,34 @@ ReadEEROM:
     sbi     ddrb, EEROM_CS_BIT
 
     ; ...and output read command
-    ldi     spicmd, READL
-    out     spdr, spicmd
-    ldi     spicmd, READH
-    or      spicmd, eeromAddr
+    ldi     spiData, READH
+    out     spdr, spiData
     rcall   SerialReady
-    out     spdr, spicmd
+    ldi     spiData, READL
+    or      spiData, eeromAddr
+    out     spdr, spiData
 
 
   ReadEEROMReadAndStore:
-    ;;; read and store byte
     rcall   SerialReady
-    st      y+, spdr
+    ;;; read and store byte
+    in      spiData, spdr
+    st      y+, spiData
 
     ;;; inc/dec stuff
     inc     a
     dec     n
 
-    ;;; check if a is even (after incrementin)
+    ;;; check if a is even (after incrementing)
     bst     a, 0
-    ; if it is, don't turn chip select off yet because we have to read one
-    ;   more byte; so just loop
-    brts    ReadEEROMWhile
-    ; ... unless of course this is the last byte
+    ; if it is, or ...
+    brtc    ReadEEROMCSOff
+    ; ... if this is the last byte then ...
     tst     n
     brne    ReadEEROMWhile
 
+    ; ... turn chip select off, since we're done reading this word
+  ReadEEROMCSOff:
     ; set chip select off
     cbi     ddrb, EEROM_CS_BIT
     ; and loop
@@ -489,7 +498,7 @@ ReadEEROM:
     pop     zero
     pop     testH
     pop     testL
-    pop     spicmd
+    pop     spiData
     pop     eeromAddr
 
     ret

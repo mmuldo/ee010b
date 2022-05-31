@@ -30,7 +30,7 @@
 
 ; bit to set in TIMSK to enable Timer0 interrupts on compare match
 ; ----------------------------------------------------------------
-.equ    OCIE0_Bit   =   1
+.equ    OCIE0_Bit   =   0b00000010
 
 
 ; Timer1 registers
@@ -49,11 +49,9 @@
 ; ..-.....  reserved
 ; ...10...  phase and frequency correct mode for WGM1
 ; .....010  prescale clock by 8
-.equ    TIMER1A_CTR =   0b00010010
-
-; bit to set in TIMSK to enable Timer1A interrupts on compare match
-; -----------------------------------------------------------------
-.equ    OCIE1A_BIT  =   4
+.equ    TIMER1B_CTR_PRESCALE8 =   0b00010010
+; .....000  prescale clock by 8
+.equ    TIMER1B_CTR_PRESCALE0 =   0b00010000
 
 ; Timer1A base frequency
 ; ----------------------
