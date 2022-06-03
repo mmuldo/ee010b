@@ -1607,3 +1607,112 @@ DownRot_RET:
     POP     R21
     POP     R0
     RET
+
+
+
+
+; ResolveSwitchCounter(counter)
+; =============================
+; 
+; Description
+; -----------
+; Determines what to do with a switch counter based on the t flag.
+; counter is passed by reference via y.
+; Here are the possible outcomes:
+;   t set and counter > 0 --> decrement counter
+;   t set and counter ==0 --> counter = 0
+;   t clear --> reinit counter
+; 
+; Operational Description
+; -----------------------
+; First checks if t is clear. If it is, reinits counter.
+; Then checks if counter > 0. If so, decrements counter.
+; 
+; Arguments
+; ---------
+; counter (16-address, y): data memory address of counter
+; 
+; Return Values
+; -------------
+; none
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; none
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; [none]
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
+ResolveSwitchCounter:
+    ;;; counter value
+    .def    counter = r16
+    push    counter
+
+    ;;; t = 0 --> reinit
+    brts    ResolveSwitchCounterReinit
+
+    ;;; t = 1 and counter == 0 --> return
+    ld      counter, y
+    tst     counter
+    breq    ResolveSwitchCounterReturn
+
+    ;;; otherwise, dec counter
+    dec     counter
+    jmp     ResolveSwitchCounterStore
+
+  ResolveSwitchCounterReinit:
+    ldi     counter, SWITCH_COUNTER_INIT
+    ;jmp     ResolveSwitchCounterStore
+
+  ResolveSwitchCounterStore:
+    ;;; store changed counter
+    st      y, counter
+    ;jmp     ResolveSwitchCounterReturn
+
+  ResolveSwitchCounterReturn:
+    pop     counter
+    ret

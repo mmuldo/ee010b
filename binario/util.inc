@@ -8,6 +8,8 @@
 ; ----------------
 ; 4/30/2022     Matt Muldowney      true/false
 ; 5/27/2022     Matt Muldowney      max 16-bit value
+; 6/02/2022     Matt Muldowney      cb macro
+; 6/03/2022     Matt Muldowney      tstWithT macro
 
 ; booleans
 ; ========
@@ -20,6 +22,10 @@
 ; -------------------------------------
 .equ    MAX_16BIT = 0xFFFF
 
+; sreg locations
+; ==============
+; z flag position
+.equ    Z_POSITION = 1
 
 ; cb(byte, bitNumber)
 ; =======================
@@ -295,70 +301,65 @@
 
 
 
-; rotk(rotInstr, byte, k)
-; =====================================
-;
+; tstWithT(register)
+; ========================================
+; 
 ; Description
 ; -----------
-; This macro performs the rotation insruction rotInstr on byte
-; k times, kind of like:
-;   while k > 0:
-;       rotInstr byte
-;       k--
+; This macro performs as tst on register, but then moves the z flag to the
+; t flag; i.e. it indicates the result of the tst with the t flag instead
+; of the z flag.
 ; Syntax:
-;   rotk    instr, Rd, Rr
-; instr is any shift/rotation instruction
-; 0 <= d, r <= 31
-;
+;   tstWithT    Rd
+; 0 <= d <= 31
+; 
 ; Operational Description
 ; -----------------------
-; loops k times and performs rotInstr on byte each time (uses relative jumps)
-;
+; Performs a tst on Rd, reads in sreg, then sets t according to z.
+; 
 ; Arguments
 ; ---------
-; rotInstr: any shift/rotation instruction
-; byte (8-bit string, Rd): register to rotate
-; k (int, Rr): number of times to perform instr
-;
+; register (Rd): the register to tst
+; 
 ; Return Values
 ; -------------
-; byte (8-bit string, Rd): original byte shifted/rotated k times
-;
+; t: set iff z is set as a result of the tst
+; 
 ; Global Variables
 ; ----------------
 ; None
-;
+; 
 ; Shared Variables
 ; ----------------
-; None
-;
+; none
+; 
 ; Local Variables
 ; ---------------
-; None
-;
+; sregResult (r23): reads in sreg after tst
+; 
 ; Inputs
 ; ------
-; None
-;
+; none
+; 
 ; Outputs
 ; -------
 ; None
-;
+; 
 ; Error Handling
 ; --------------
 ; None
-;
+; 
 ; Algorithms
 ; ----------
-; None
-;
+; none
+; 
 ; Data Structures
 ; ---------------
 ; None
-;
-; Registers Used
-; --------------
-; none
+; 
+; Registers Changed
+; -----------------
+; None
 ;
 ; Stack Depth
 ; -----------
@@ -367,17 +368,24 @@
 ; Limitations
 ; -----------
 ; None
-;
+; 
+; Known Bugs
+; ----------
+; None
+; 
 ; Special Notes
 ; -------------
 ; None
-.macro  rotk
-    ; save k out of convenience to caller
-    push    @2
+.macro  tstWithT
+    .def    sregResult = r23
+    push    sregResult
 
-    ; perform shift/rot on byte
-    @0      @1
+    ;;; perform tst on register
+    tst     @0
 
-    dec     @2
-    brne    -2
+    ;;; get z flag reading
+    in      sregResult, sreg
+    bst     sregResult, Z_POSITION
+
+    pop     sregResult
 .endm
