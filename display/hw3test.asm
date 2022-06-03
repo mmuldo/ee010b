@@ -31,6 +31,8 @@
 .include "switches.inc"
 .include "util.inc"
 .include "display.inc"
+.include "serial.inc"
+.include "sound.inc"
 
 
 .dseg
@@ -661,3 +663,5 @@ TestSSCTab:
 .include "switches.asm"
 .include "util.asm"
 .include "display.asm"
+.include "sound.asm"
+.include "serial.asm"
