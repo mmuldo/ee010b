@@ -16,6 +16,10 @@
 ;    4/21/22  Glen George               added constants for number of tests
 ;    4/21/22  Glen George               changed test data to match final EEROM
 ;                                          values
+;    5/28/22  Matt Muldowney            downloaded
+;    5/30/22  Matt Muldowney            include statements and init stuff in Start
+;    6/02/22  Matt Muldowney            success/failure calls pltimg (since I imported
+;                                           my display stuff, the mux was messing it up)
 
 
 ;set the device
@@ -32,7 +36,6 @@
 .include "display.inc"
 .include "serial.inc"
 .include "sound.inc"
-;.include "binario.inc"
 
 
 ;the data segment
@@ -95,7 +98,12 @@
         JMP     PC                      ;store program memory ready
 
 
-
+.macro testrot
+    @0:
+        dec @1
+        brne @0
+.endm
+    
 
 ; start of the actual program
 
@@ -119,7 +127,14 @@ Start:                                  ;start the CPU after a reset
         rcall   PlayNote
         sei
 
-        rcall ReadEEROMTests
+        ldi r17, 3
+        ldi r16, 1
+        ldi r18, -2
+        lsl r16
+        dec r17
+        brne 0xFFFE
+        nop
+        ;rcall EEROMSoundTest
 
 
 
@@ -275,12 +290,8 @@ CheckDataLoop:                          ;now loop checking the bytes
 
 PlaySuccess:                            ;play the tune indicating success
 
-        LDI     R16, 0xFF               ;turn LEDs all green
-        OUT     PORTA, R16
-        LDI     R16, 0
-        OUT     PORTD, R16
-        LDI     R16, 0xFF
-        OUT     PORTC, R16
+        ; turn all LEDs green
+        pltimg  GreenTab
 
         LDI     ZL, LOW(2 * SuccessTab) ;start at the beginning of the
         LDI     ZH, HIGH(2 * SuccessTab);   special success tune table
@@ -311,12 +322,8 @@ PlayFailure:                            ;play the tune indicating failure
         LDI     R17, HIGH(261)
         RCALL   PlayNote
 
-        LDI     R16, 0xFF               ;turn LEDs all red
-        OUT     PORTD, R16
-        LDI     R16, 0
-        OUT     PORTA, R16
-        LDI     R16, 0xFF
-        OUT     PORTC, R16
+        ; turn all LEDs red
+        pltimg  RedTab
 
         LDI     R16, 50                 ;1/2 second note
         RCALL   Delay16
@@ -482,6 +489,35 @@ SuccessTab:
         .EQU    SuccessTab_LEN = PC - SuccessTab
 
 
+; RedTab
+;
+; Description:  completely red LED grid for PlotImage
+;
+; Author:       Matt Muldowney
+RedTab:
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+        .DB     0xFF, 0x00
+
+; GreenTab
+;
+; Description:  completely Green LED grid for PlotImage
+;
+; Author:       Matt Muldowney
+GreenTab:
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
+        .DB     0x00, 0xFF
 
 
 ; EEROMDataTab
@@ -526,4 +562,3 @@ EEROMDataTab:
 .include "display.asm"
 .include "sound.asm"
 .include "serial.asm"
-;.include "binario.asm"

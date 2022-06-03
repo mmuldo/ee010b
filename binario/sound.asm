@@ -181,7 +181,7 @@ PlayNote:
     out     ocr1ah, quotientM
     out     ocr1al, quotientL
     ; turn speaker on by setting prescalar to 8
-    ori     tmp, TIMER1B_CTR_PRESCALE8
+    ldi     tmp, TIMER1B_CTR_PRESCALE8
     out     tccr1b, tmp
 
     ;;; now we're done

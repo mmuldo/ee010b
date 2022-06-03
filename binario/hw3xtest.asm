@@ -109,11 +109,12 @@ Start:                                  ;start the CPU after a reset
         rcall   InitTimer1
         sei
 
-        ldi     zl, low(2*TestDisplay)
-        ldi     zh, high(2*TestDisplay)
-        rcall   PlotImage
-        ForeverLoop:
-        jmp     ForeverLoop
+        rcall   DisplayTestEx
+        ;ldi     zl, low(2*TestDisplay)
+        ;ldi     zh, high(2*TestDisplay)
+        ;rcall   PlotImage
+        ;ForeverLoop:
+        ;jmp     ForeverLoop
 
 TestDisplay:
         .DB     0b00000000, 0b00000000          ;screen 4

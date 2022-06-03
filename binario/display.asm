@@ -1092,25 +1092,13 @@ MultiplexDisplay:
 ; Special Notes
 ; -------------
 ; None
-;
-; Pseudocode
-; ----------
-;
-; n = 0
-; x = redBuffer
-; y = greenBuffer
-; z = ptr
-; WHILE n < NUM_COLS * 2:
-;   IF n is even:
-;     x++ = z++
-;   ELSE:
-;     y++ = z++
-;   n++
-; END_WHILE
 PlotImage:
     ;;; arguments
-    ; commented out since we're gonna actually use "z"
-    ; .def    ptr = z
+    ; arguments pushed out of convenience to caller
+    ; ptr = z
+    push    zl
+    push    zh
+
 
     ;;; other registers needed
     ; loop var
@@ -1180,4 +1168,6 @@ PlotImage:
     pop     currentCol
     pop     numLoops
     pop     n
+    pop     zh
+    pop     zl
     ret

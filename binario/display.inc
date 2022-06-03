@@ -10,6 +10,7 @@
 ; 05/09/2022    Matt Muldowney      cursor consts and color consts
 ; 05/10/2022    Matt Muldowney      changed cursor counter init to 250 ms
 ;                                       (from 500 ms)
+; 05/31/2022    Matt Muldowney      pltimg macro
 
 ; LED display matrix
 ; ==================
@@ -61,3 +62,91 @@
 .equ    PIXEL_RED     = 1
 .equ    PIXEL_GREEN   = 2
 .equ    PIXEL_YELLOW  = 3
+
+
+; pltimg(ptr)
+; =======================
+;
+; Description
+; -----------
+; Wrapper for PlotImage that allows passing of a program label;
+; avoids the zl, zh loading business.
+; Syntax:
+;   pltimage    label
+;
+; Operational Description
+; -----------------------
+; loads label into z register and then calls PlotImage(z)
+;
+; Arguments
+; ---------
+; label: program label (0 <= label < 4M)
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 2 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  pltimg
+    push    zl
+    push    zh
+
+    ;;; load pm label into z
+    ldi     zl, low(2*@0)
+    ldi     zh, high(2*@0)
+    ;;; call PlotImage
+    rcall   PlotImage
+
+    pop     zh
+    pop     zl
+.endm

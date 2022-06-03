@@ -37,6 +37,8 @@
 ; Revision History
 ; ----------------
 ; 05/27/2022    Matt Muldowney      spi init
+; 05/31/2022    Matt Muldowney      serialready and readeerom functions
+; 06/02/2022    Matt Muldowney      docs
 
 
 
@@ -54,7 +56,8 @@
 ;
 ; Operational Description
 ; -----------------------
-; Sets chip select to an output.
+; Sets chip select to an output, MISO to input, MOSI to output, and SCK
+; to output.
 ; Sets the SPCR register such that interrupts are disabled, SPI enabled,
 ; MSB written first, master mode 0, and prescalar 8.
 ;
@@ -122,8 +125,10 @@ InitSerialIO:
     .def    temp = r16
     push temp
 
-    ; set chip-select high initially
+    ; set chip-select to output
     sbi     ddrb, EEROM_CS_BIT
+    ; set chip-select high for initialization
+    sbi     portb, EEROM_CS_BIT
     ; set sck to output
     sbi     ddrb, EEROM_SCK_BIT
     ; set master (avr) -> slave (eerom) as output 
@@ -134,6 +139,9 @@ InitSerialIO:
     ; set spi control register
     ldi     temp, EEROM_CTR
     out     spcr, temp
+
+    ; set chip-select low now that we're done
+    cbi     portb, EEROM_CS_BIT
 
     pop temp
     ret
@@ -228,107 +236,6 @@ SerialReady:
     ret
 
 
-; Read(addr)
-; ==========
-;
-; Description
-; -----------
-; Reads addr from eerom.
-; addr is passed in on r16.
-; After calling this macro, will need to call SerialReady followed by
-; processing of spdr twice.
-;
-; Operational Description
-; -----------------------
-; sets chip select high, outputs READH and READL to spdr, and then
-; receives data
-;
-; Arguments
-; ---------
-; addr (8-bit address, r16): word addressed of eerom to read 
-;
-; Return Values
-; -------------
-; spdr (twice): the data at addr
-;
-; Global Variables
-; ----------------
-; None
-;
-; Shared Variables
-; ----------------
-; None
-;
-; Local Variables
-; ---------------
-; spicmd (8-bit string, r24): utility register for outputting to spdr
-;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; EEROM chip select port
-;
-; Error Handling
-; --------------
-; None
-;
-; Algorithms
-; ----------
-; None
-;
-; Data Structures
-; ---------------
-; None
-;
-; Registers Used
-; --------------
-; None (r16 preserved)
-;
-; Stack Depth
-; --------------
-; 1 byte
-;
-; Limitations
-; -----------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Special Notes
-; -------------
-; None
-Read:
-    ;;; arguments
-    ; save args out of convenience to caller
-    .def    addr = r16
-    push    addr
-
-    ;;; util register (r24 b/c most likely not to collide)
-    .def    spicmd = r24
-    push    spicmd
-
-    ;;; set chip select high
-    sbi     ddrb, EEROM_CS_BIT
-    
-    ;;; output read command
-    ; high byte of read command
-    ldi     spicmd, READH
-    out     spdr, spicmd
-    ; wait until ready
-    rcall   SerialReady
-    ; low byte of read command (includes address)
-    ldi     spicmd, READL
-    or      spicmd, addr
-    out     spdr, spiData
-    
-    pop     addr
-    pop     spicmd
-
 
 ; ReadEEROM(a, p, n)
 ; ==================
@@ -365,7 +272,10 @@ Read:
 ;
 ; Local Variables
 ; ---------------
-; numBytes (int): RW
+; testH:testL: for validating arguments
+; zero: register that just holds 0
+; eeromAddr: word address in eerom
+; firstByte:secondByte: data at eeromAddr
 ;
 ; Inputs
 ; ------
@@ -395,7 +305,7 @@ Read:
 ;
 ; Stack Depth
 ; --------------
-; [unknown]
+; 8 bytes
 ;
 ; Limitations
 ; -----------
@@ -408,55 +318,18 @@ Read:
 ; Special Notes
 ; -------------
 ; none
-;
-; Pseudocode
-; ----------
-;
-; check a+n is within range
-; check p+n is within range
-;
-; # edge case: starting addr is odd
-; IF a is odd:
-;   set CS high
-;
-;   eeromAddr = a / 2 - 1
-;   output read command to SPI at eeromAddr
-;   first byte is garbage
-;   store second byte
-;
-;   set CS low
-;
-;   a++
-;   p++
-;   n--
-; ENDIF
-;
-; WHILE (n > 0):
-;   IF (a is even):
-;       set CS high
-;       eeromAddr = a / 2
-;       output read command to SPI at eeromAddr
-;   ENDIF
-;
-;   read and store byte
-;
-;   IF (a is odd) or (numBytes == 1):
-;       set CS low
-;   ENDIF
-;
-;   a++
-;   p++
-;   n--
-; ENDWHILE
 ReadEEROM:
     ;;; arguments
+    ; save args out of convenience to caller
     ; number of bytes to read
     .def    n = r16
+    push    n
     ; EEROM start address
     .def    a = r17
-    ; data memory start address
-    ; this commented out line just indicates that p is stored in y
-    ;.def    p = y
+    push    a
+    ; p is stored in y
+    push    yl
+    push    yh
 
 
     ;;; other registers
@@ -464,21 +337,16 @@ ReadEEROM:
     .def    eeromAddr = r18
     push    eeromAddr
 
-    ; register for spi commands
-    .def    spiData = r19
-    push    spiData
-
     ; registers for testing argument validity
-    .def    testL = r20
-    .def    testH = r21
+    .def    testL = r24
+    .def    testH = r25
     push    testL
     push    testH
 
     ; needed for add/adc commands
-    .def    zero = r22
+    .def    zero = r21
     push    zero
     clr     zero
-
 
     ;;; check if a + n is valid; if not, return
     mov     testL, a
@@ -497,87 +365,45 @@ ReadEEROM:
     ; memeory can store 2**16 bytes)
     brcs    ReadEEROMRet
 
-
-    ;;; edge case: starting addr a is odd
-    ;;;     this is an issue because eerom addresses words, not bytes,
-    ;;;     so an odd byte  addr a means we're trying to access eerom we don't 
-    ;;;     have direct access to
-    ; check if a is odd
-    bst     a, 0
-    brtc    ReadEEROMWhile
-    ; if it is odd, we have to deal with the edge case
-    ; get the actual word address
-    mov     eeromAddr, a
-    lsr     eeromAddr
-
-    ; read in data from eeromAddr
-    push    r16
-    mov     r16, eeromAddr
-    rcall   Read
-    pop     r16
-
-    
-    ; first byte is garbage
-    rcall   SerialReady
-
-    ; store second byte
-    rcall   SerialReady
-    in      spiData, spdr
-    st      y+, spiData
-    
-    ; set chip select low
-    cbi     ddrb, EEROM_CS_BIT
-
-    ; increment/decrement stuff
-    inc     a
-    dec     n
-
+    ; since we're sone with testH and testL, redefine them
+    ;   for eerom read use
+    .def    firstByte = r24
+    .def    secondByte = r25
 
   ReadEEROMWhile:
     ;;; check if there are still bytes to read
+    ; if n == 0, no more bytes to read, so done
     tst     n
-    ; if no more bytes, we're done
     breq    ReadEEROMRet
     ; otherwise, do loop
 
-    ;;; check if a is even
-    bst     a, 0
-    brts    ReadEEROMReadAndStore
-    ; if a is even, then we can address eerom, so...
-    ; ... get the actual word address
+    ;;; get word address
     mov     eeromAddr, a
     lsr     eeromAddr
 
-    ; read in data from eeromAddr
-    push    r16
-    mov     r16, eeromAddr
-    rcall   Read
-    pop     r16
+    ;;; read in data from eeromAddr
+    read    eeromAddr, firstByte, secondByte
 
-
-  ReadEEROMReadAndStore:
-    rcall   SerialReady
-    ;;; read and store byte
-    in      spiData, spdr
-    st      y+, spiData
-
-    ;;; inc/dec stuff
+    ;;; store data first byte
+    ; if a is odd, we're on the first iteration edge case
+    ;   of starting the read in the middle of a word,
+    ;   so skip reading the first byte because it's
+    ;   garbage
+    bst     a, 0
+    brts    ReadEEROMSkipFirstByte
+    st      y+, firstByte
+    inc     a
+    dec     n
+    ; if n == 0, we're done (this handles the edge case of reading an
+    ;   odd number of bytes)
+    breq    ReadEEROMRet
+  ReadEEROMSkipFirstByte:
+    ;;; store data second byte
+    st      y+, secondByte
     inc     a
     dec     n
 
-    ;;; check if a is even (after incrementing)
-    bst     a, 0
-    ; if it is, or ...
-    brtc    ReadEEROMCSOff
-    ; ... if this is the last byte then ...
-    tst     n
-    brne    ReadEEROMWhile
-
-    ; ... turn chip select off, since we're done reading this word
-  ReadEEROMCSOff:
-    ; set chip select off
-    cbi     ddrb, EEROM_CS_BIT
-    ; and loop
+    ;;; loop
     rjmp    ReadEEROMWhile
 
     
@@ -585,7 +411,10 @@ ReadEEROM:
     pop     zero
     pop     testH
     pop     testL
-    pop     spiData
     pop     eeromAddr
+    pop     yh
+    pop     yl
+    pop     a
+    pop     n
 
     ret
