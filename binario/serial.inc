@@ -2,7 +2,25 @@
 ; serial.inc ;
 ;;;;;;;;;;;;;;
 
-; port constants
+; Description
+; -----------
+; serial i/o constants and macros
+;
+; Constants
+; ---------
+; EEROM_CS_BIT: location in port where chip select is controlled
+; EEROM_SCK_BIT: location in port where sck is controlled
+; EEROM_MOSI_BIT: location in port where mosi is controlled
+; EEROM_MISO_BIT: location in port where miso is controlled
+; EEROM_CTR: spi control register
+; EEROM_CAPACITY: max number of bytes storable in EEROM
+; SPIF_MASK: masks off spif in spsr
+; READH: high byte of eerom read command
+; READL: low byte of eerom read command
+;
+; Macros
+; ------
+; read(addr, data1, data2): reads word at eerom addr into bytes data1 and data2
 ;
 ; Revision History
 ; ----------------
@@ -11,6 +29,10 @@
 ; 6/02/2022     Matt Muldowney      eerom read macro
 
 
+; ##########
+; # consts #
+; ##########
+;
 ; EEROM consts
 ; ============
 ; bit on EEROM port at which chip-select is controlled
@@ -125,7 +147,7 @@
 ;
 ; Stack Depth
 ; --------------
-; 1 byte
+; 2 byte
 ;
 ; Limitations
 ; -----------
@@ -139,9 +161,10 @@
 ; -------------
 ; Although r23 is preserved in this macro, it can't be used for Rr.
 .macro read
+    push    r23
+
     ;;; util register (r23 b/c most likely not to collide)
     .def    spicmd = r23
-    push    spicmd
 
     ;;; set chip select high
     sbi     portb, EEROM_CS_BIT
@@ -162,7 +185,7 @@
     rcall   SerialReady
     
     ; pop spicmd in case user wants to use r23 for rd1 or rd2
-    pop     spicmd
+    pop     r23
 
     ;;; reuse spicmd register for zero;
     ;;;   needed to out garbage to spdr
@@ -186,4 +209,6 @@
 
     ;;; set chip select low
     cbi     portb, EEROM_CS_BIT
+
+    ;;; note that r23 popped earlier
 .endm

@@ -4,37 +4,16 @@
 
 ; Description
 ; -----------
-; Contains functions for controlling speaker, including:
-;   * PlayNote(f): plays frequency f over speaker
+; Contains functions for controlling speaker.
 ;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; speaker
-;
-; User Interface
-; --------------
-; None
-;
-; Error Handling
-; --------------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Limitations
-; -----------
-; None
+; Routines
+; --------
+; PlayNote(f): plays frequency f over speaker
 ;
 ; Revision History
 ; ----------------
 ; 05/27/2022    Matt Muldowney      initial revision
-; 05/31/2022    Matt Muldowney      remove timsrk RW (b/c we don't need it)
+; 05/31/2022    Matt Muldowney      remove timsk RW (b/c we don't need it)
 
 
 .cseg
@@ -121,13 +100,17 @@
 ; -------------
 ; none
 PlayNote:
+    ; not that we save arguments out of convenience to caller
+    push    r16
+    push    r17
+    push    r18
+    push    r20
+    push    r21
+
     ;;; arguments
     ; f (frequency in Hz)
-    ; save arguments out of convenience to caller
     .def    fL = r16
-    push    fL
     .def    fH = r17
-    push    fH
 
     ;;; check if f is 0 Hz
     tst     fH
@@ -147,8 +130,8 @@ PlayNote:
     ; divisor for div24by16
     .def    divisorH = r21
     .def    divisorL = r20
-    push    divisorH
-    push    divisorL
+
+    ; the diviser is the frequency we want
     mov     divisorH, fH
     mov     divisorL, fL
 
@@ -156,8 +139,8 @@ PlayNote:
     .def    dividendH = r18
     .def    dividendM = r17
     .def    dividendL = r16
-    ; we don't push r17|r16 because they contained the argument f
-    push    dividendH
+
+    ; the dividend is the base timer1a frequency
     ldi     dividendH, F_TIMER1A_H
     ldi     dividendM, F_TIMER1A_M
     ldi     dividendL, F_TIMER1A_L
@@ -168,6 +151,7 @@ PlayNote:
     .def    quotientH = r18
     .def    quotientM = r17
     .def    quotientL = r16
+    ; the quotient is the thing to put in the output compare register
 
     ;;; check if quotient is too large
     tst     quotientH
@@ -185,10 +169,10 @@ PlayNote:
     out     tccr1b, tmp
 
     ;;; now we're done
-    pop     dividendH
-    pop     divisorL
-    pop     divisorH
   PlayNoteRet:
-    pop     fH
-    pop     fL
+    pop     r21
+    pop     r20
+    pop     r18
+    pop     r17
+    pop     r16
     ret

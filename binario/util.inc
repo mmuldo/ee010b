@@ -2,14 +2,37 @@
 ; util.inc ;
 ;;;;;;;;;;;;
 
-; utility constants
+; Description
+; -----------
+; utility constants and macros
+;
+; Constants
+; ---------
+; TRUE
+; FALSE
+; MAX_16BIT
+; Z_POSITION: position of z flag in sreg
+;
+; Macros
+; ------
+; cb(byte, bitNumber): clears byte[bitNumber]
+; sb(byte, bitNumber): sets byte[bitNumber]
+; withinBounds(num, lower, upper): checks lower <= num <= upper
+; tstWithT(register): tst register, but sets t flag instead of z flag
+; checkBoolean(boolean): sets z flag according to boolean in data memory
 ;
 ; Revision History
 ; ----------------
 ; 4/30/2022     Matt Muldowney      true/false
 ; 5/27/2022     Matt Muldowney      max 16-bit value
-; 6/02/2022     Matt Muldowney      cb macro
-; 6/03/2022     Matt Muldowney      tstWithT macro
+; 6/02/2022     Matt Muldowney      cb, sb macros
+; 6/02/2022     Matt Muldowney      withinBounds macro
+; 6/03/2022     Matt Muldowney      tstWithT, copyTtoZ macros
+; 6/03/2022     Matt Muldowney      checkBoolean macro
+
+; ##########
+; # consts #
+; ##########
 
 ; booleans
 ; ========
@@ -27,12 +50,18 @@
 ; z flag position
 .equ    Z_POSITION = 1
 
+
+
+; ##########
+; # macros #
+; ##########
+
 ; cb(byte, bitNumber)
 ; =======================
 ;
 ; Description
 ; -----------
-; cbi but for register, register input
+; cbi but for register-register input
 ; Clears byte[bitNumber].
 ; bitNumber is 1-hot (i.e. 0b00000100 --> 3)
 ; Syntax:
@@ -204,8 +233,7 @@
 .endm
 
 
-
-; withinbounds(num, lower, upper)
+; withinBounds(num, lower, upper)
 ; =====================================
 ;
 ; Description
@@ -215,6 +243,7 @@
 ; Syntax:
 ;   withinbounds    Rd, Rr1, Rr2
 ; 0 <= d, r1, r2 <= 31
+; Note that other flags (h, s, v, n, z, c) maybe set as a result of this macro.
 ;
 ; Operational Description
 ; -----------------------
@@ -279,6 +308,11 @@
 ; -------------
 ; None
 .macro  withinbounds
+    ;;; arguments
+    ; @0 --> value
+    ; @1 --> lower bound
+    ; @2 --> upper bound
+
     ; save these b/c we're gonna overwrite
     push    @0
     push    @2
@@ -300,18 +334,18 @@
 .endm
 
 
-
 ; tstWithT(register)
-; ========================================
+; ==================
 ; 
 ; Description
 ; -----------
-; This macro performs as tst on register, but then moves the z flag to the
+; This macro performs a tst on register, but then moves the z flag to the
 ; t flag; i.e. it indicates the result of the tst with the t flag instead
 ; of the z flag.
 ; Syntax:
 ;   tstWithT    Rd
 ; 0 <= d <= 31
+; Note that other flags (s, n, z) maybe set as a result of this macro.
 ; 
 ; Operational Description
 ; -----------------------
@@ -363,7 +397,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 1 byte
 ;
 ; Limitations
 ; -----------
@@ -377,8 +411,9 @@
 ; -------------
 ; None
 .macro  tstWithT
-    .def    sregResult = r23
-    push    sregResult
+    push    r0
+
+    .def    sregResult = r0
 
     ;;; perform tst on register
     tst     @0
@@ -387,5 +422,220 @@
     in      sregResult, sreg
     bst     sregResult, Z_POSITION
 
-    pop     sregResult
+    pop     r0
+.endm
+
+; notTstWithT(register)
+; ==================
+; 
+; Description
+; -----------
+; This macro performs a tst on register, but then moves  !z to the
+; t flag; i.e. it indicates the opposite result of the tst with the t flag 
+; instead of the z flag.
+; Syntax:
+;   notTstWithT    Rd
+; 0 <= d <= 31, d != 23
+; Note that other flags (s, n, z) maybe set as a result of this macro.
+; 
+; Operational Description
+; -----------------------
+; Performs a tst on Rd, reads in sreg, then sets t according to !z.
+; Can't use r23 because we use that for a local variable.
+; 
+; Arguments
+; ---------
+; register (Rd): the register to tst
+; 
+; Return Values
+; -------------
+; t: set iff z is clear as a result of the tst
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; none
+; 
+; Local Variables
+; ---------------
+; sregResult: reads in sreg after tst
+; invertZ: when eor'd with sreg, z inverted
+; 
+; Inputs
+; ------
+; none
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; none
+; 
+; Data Structures
+; ---------------
+; None
+; 
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 1 byte
+;
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
+.macro  notTstWithT
+    push    r0
+    push    r23
+
+    .def    sregResult = r0
+
+    .def    invertZ = r23
+    ldi     invertZ, (1<<Z_POSITION)
+
+    ;;; perform tst on register
+    tst     @0
+
+    ;;; get !z flag reading
+    in      sregResult, sreg
+    eor     sregResult, invertZ
+    bst     sregResult, Z_POSITION
+
+    pop     r23
+    pop     r0
+.endm
+
+; checkBool(boolean)
+; ==================
+; 
+; Description
+; -----------
+; indicates if a boolean in data memory is True/False.
+; If byte at data memory location "boolean" is TRUE, set z flag to 1;
+; otherwise set z flag to 0.
+; Resets boolean to FALSE everytime.
+; Note that other flags (h, s, v, n, c) maybe set as a result of this macro.
+; 
+; Operational Description
+; -----------------------
+; Freezes sreg and stops interrupts (due to critical code), reads in
+; boolean from data memory, and then resets boolean in data memory to FALSE,
+; after unfreezes sreg.
+; Then, if read in boolean is TRUE, set z flag, otherwise clear it.
+; 
+; Arguments
+; ---------
+; boolean (data memory location): the thing we are checking
+; 
+; Return Values
+; -------------
+; z: 1 iff boolean is TRUE
+; 
+; Global Variables
+; ----------------
+; None
+; 
+; Shared Variables
+; ----------------
+; none
+; 
+; Local Variables
+; ---------------
+; None
+; 
+; Inputs
+; ------
+; None
+; 
+; Outputs
+; -------
+; None
+; 
+; Error Handling
+; --------------
+; None
+; 
+; Algorithms
+; ----------
+; None
+; 
+; Data Structures
+; ---------------
+; None
+;
+; Registers Changed
+; -----------------
+; None
+;
+; Stack Depth
+; -----------
+; 3 bytes
+; 
+; Limitations
+; -----------
+; None
+; 
+; Known Bugs
+; ----------
+; None
+; 
+; Special Notes
+; -------------
+; None
+.macro  checkBool
+    push    r0
+    push    r16
+    push    r17
+
+    ; for freezing sreg
+    .def    sregReading = r0
+    ; for reading in boolean
+    .def    booleanReg = r16
+    ; for re-initing boolean
+    .def    falseReg = r17
+    ldi     falseReg, FALSE
+
+
+    ;;; freeze status flags and stop interrupts
+    in      sregReading, sreg
+    cli
+    
+    ;;; critical code
+    ; save boolean to register and reset it
+    lds     booleanReg, @0
+    sts     @0, falseReg
+    ; end critical code
+    
+    ; unfreeze status flags
+    out     sreg, sregReading
+    
+    ;;; check if boolean is TRUE/FAlSE
+    ; booleanReg == TRUE --> booleanReg-- == 0
+    ; booleanReg == FALSE --> booleanReg-- != 0
+    dec     booleanReg
+    tst     booleanReg
+
+    ;;; done
+    pop     r17
+    pop     r16
+    pop     r0
 .endm

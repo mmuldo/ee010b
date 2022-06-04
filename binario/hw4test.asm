@@ -98,12 +98,6 @@
         JMP     PC                      ;store program memory ready
 
 
-.macro testrot
-    @0:
-        dec @1
-        brne @0
-.endm
-    
 
 ; start of the actual program
 
@@ -127,14 +121,8 @@ Start:                                  ;start the CPU after a reset
         rcall   PlayNote
         sei
 
-        ldi r17, 3
-        ldi r16, 1
-        ldi r18, -2
-        lsl r16
-        dec r17
-        brne 0xFFFE
-        nop
-        ;rcall EEROMSoundTest
+
+        rcall EEROMSoundTest
 
 
 

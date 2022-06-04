@@ -5,34 +5,13 @@
 ; Description
 ; -----------
 ; handles all interactions between the serial peripheral interface (SPI) and
-; the EEROM, including:
-;   * InitSerialIO: initializes SPI
-;   * SerialReady: awaits SPIF flag before executing an spi command
-;   * ReadEEROM(a, p, n): read n bytes from EEROM address a and store at p
+; the EEROM.
 ;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; None
-;
-; User Interface
-; --------------
-; None
-;
-; Error Handling
-; --------------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Limitations
-; -----------
-; None
+; Routines
+; --------
+; InitSerioIO: initializes SPI
+; SerialReady: awaits SPIF flag before executing an spi command
+; ReadEEROM(a, p, n): read n bytes from EEROM address a and store at p
 ;
 ; Revision History
 ; ----------------
@@ -121,9 +100,10 @@
 ; -------------
 ; None
 InitSerialIO:
-    ;;; registers needed
+    push    r16
+
+    ; general purpose register
     .def    temp = r16
-    push temp
 
     ; set chip-select to output
     sbi     ddrb, EEROM_CS_BIT
@@ -143,7 +123,7 @@ InitSerialIO:
     ; set chip-select low now that we're done
     cbi     portb, EEROM_CS_BIT
 
-    pop temp
+    pop     r16
     ret
 
 
@@ -220,8 +200,10 @@ InitSerialIO:
 ; -------------
 ; none
 SerialReady:
+    push    r16
+
+    ; for reading in spsr
     .def    tempSPIF = r16
-    push    tempSPIF
 
     ;;; do-while: read in spif until it's set
   SerialReadyDoWhile:
@@ -232,7 +214,7 @@ SerialReady:
     brne    SerialReadyDoWhile
 
     ; if it is, then we're done
-    pop     tempSPIF
+    pop     r16
     ret
 
 
@@ -305,7 +287,7 @@ SerialReady:
 ;
 ; Stack Depth
 ; --------------
-; 8 bytes
+; 10 bytes
 ;
 ; Limitations
 ; -----------
@@ -319,33 +301,35 @@ SerialReady:
 ; -------------
 ; none
 ReadEEROM:
-    ;;; arguments
-    ; save args out of convenience to caller
-    ; number of bytes to read
-    .def    n = r16
-    push    n
-    ; EEROM start address
-    .def    a = r17
-    push    a
-    ; p is stored in y
+    ; note that args pushed args out of convenience to caller
+    push    r16
+    push    r17
+    push    r18
+    push    r21
+    push    r24
+    push    r25
     push    yl
     push    yh
+
+
+    ;;; arguments
+    ; number of bytes to read
+    .def    n = r16
+    ; EEROM start address
+    .def    a = r17
+    ; p is stored in y
 
 
     ;;; other registers
     ; actual EEROM address (addresses the word, not the byte)
     .def    eeromAddr = r18
-    push    eeromAddr
 
     ; registers for testing argument validity
     .def    testL = r24
     .def    testH = r25
-    push    testL
-    push    testH
 
     ; needed for add/adc commands
     .def    zero = r21
-    push    zero
     clr     zero
 
     ;;; check if a + n is valid; if not, return
@@ -408,13 +392,13 @@ ReadEEROM:
 
     
   ReadEEROMRet:
-    pop     zero
-    pop     testH
-    pop     testL
-    pop     eeromAddr
-    pop     yh
-    pop     yl
-    pop     a
-    pop     n
+    pop    yh
+    pop    yl
+    pop    r25
+    pop    r24
+    pop    r21
+    pop    r18
+    pop    r17
+    pop    r16
 
     ret

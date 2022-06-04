@@ -7,29 +7,12 @@
 ; Initializes timers by setting appropriate control, output compare, etc.
 ; registers
 ;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; None
-;
-; User Interface
-; --------------
-; None
-;
-; Error Handling
-; --------------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Limitations
-; -----------
-; None
+; Routines
+; --------
+; InitTimer0: initializes timer0 to 1ms interrupt period
+; Timer0EventHandler: runs switch debouncing and display muxing
+;   logic on timer0 interrupt
+; InitTimer1: initializes timer1 for wave generation
 ;
 ; Revision History
 ; ----------------
@@ -41,8 +24,10 @@
 ; 05/27/2022    Matt Muldowney      timsk init in inittimer0 now only sets
 ;                                       timer0's respective interrupt bit
 ; 05/27/2022    Matt Muldowney      timer1 initialization
+; 06/03/2022    Matt Muldowney      comment out timer0 event handler logic 
+;                                       for now
 
-.CSEG
+.cseg
 
 ; InitTimer0 Specification
 ; ============================
@@ -50,12 +35,14 @@
 ; Description
 ; -----------
 ; Initializes Timer0 which we will use to generate interrupts every 1 ms.
-; This is handy for debouncing the switches.
+; This is handy for debouncing the switches and display multiplexing.
 ;
 ; Operational Description
 ; -----------------------
 ; The clock runs at 8 MHz, so we initialize timer0 with a prescalar of 32 and
 ; put it in output compare mode, setting the output compare register to 250.
+; This puts the period of interrupts at 1 ms, which is good for things like
+; debouncing and display multiplexing.
 ; (Note: 8 MHz / 32 / 250 = 1 KHz --> period of 1 ms).
 ;
 ; Arguments
@@ -104,7 +91,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 1 byte
+; 2 bytes
 ;
 ; Limitations
 ; -----------
@@ -118,19 +105,22 @@
 ; -------------
 ; None
 InitTimer0:
-    ;;; registers needed
+    push    r16
+    push    r17
+
     ; tmp register
     .def    tmp = r16
-    push    tmp
 
-    ; register to in timsk
+    ; register to out to timsk
     .def    timskReg = r17
-    push    timskReg
+    ; timsk should intially be 0 so we can set the bits we want individually
     clr     timskReg
 
+    ; timer0 control register
     ldi     tmp, TIMER0_CTR
     out     tccr0, tmp
 
+    ; timer0 output compare register
     ldi     tmp, TIMER0_COMP
     out     ocr0, tmp
 
@@ -138,8 +128,8 @@ InitTimer0:
     ori     timskReg, OCIE0_BIT
     out     timsk, timskReg
 
-    pop     timskReg
-    pop     tmp
+    pop     r17
+    pop     r16
     ret
 
 
@@ -152,7 +142,7 @@ InitTimer0:
 ;
 ; Description
 ; -----------
-; timer0 interrupt event handler. gets run once every 1 ms.
+; timer0 interrupt event handler. gets run once every timer0 interrupt
 ;
 ; Operational Description
 ; -----------------------
@@ -218,31 +208,34 @@ InitTimer0:
 ; -------------
 ; None
 Timer0EventHandler:
-	; need r0 for sreg
-	push r0
-    ; save sreg into r0
-    in r0, sreg
-	; push r0 again in case functions below mess it up
-    push r0
+    ;;; LOGIC COMMENTED OUT FOR NOW B/C WE DON'T WANT TO
+    ;;; DO ANY SWITCH/DISPLAY LOGIC FOR HW4
+
+	;; need r0 for sreg
+	;push r0
+ ;   ; save sreg into r0
+ ;   in r0, sreg
+	;; push r0 again in case functions below mess it up
+ ;   push r0
 	
-	; multiplexdisplay uses y and z registers, so we need
-	;	to save those
-	push yl
-	push yh
-	push zl
-	push zh
+	;; multiplexdisplay uses y and z registers, so we need
+	;;	to save those
+	;push yl
+	;push yh
+	;push zl
+	;push zh
 
-    rcall SwitchEventHandler
-    rcall MultiplexDisplay
+ ;   rcall SwitchEventHandler
+ ;   rcall MultiplexDisplay
 
 
-	pop zh
-	pop zl
-	pop yh
-	pop yl
-    pop r0
-    out sreg, r0
-	pop r0
+	;pop zh
+	;pop zl
+	;pop yh
+	;pop yl
+ ;   pop r0
+ ;   out sreg, r0
+	;pop r0
 
     reti
 
@@ -308,7 +301,7 @@ Timer0EventHandler:
 ;
 ; Stack Depth
 ; --------------
-; 2 bytes
+; 1 byte
 ;
 ; Limitations
 ; -----------
@@ -321,23 +314,21 @@ Timer0EventHandler:
 ; Special Notes
 ; -------------
 ; none
-;
-; Pseudocode
-; ----------
-;
-; out TCCR1A, TIMER1A_CTR
-; out TCCR1B, TIMER1B_CTR
-; cbi TIMSK, OCIE1A_BIT
 InitTimer1:
+    push r16
+
     ; temporary register
     .def    tmp = r16
-    push    tmp
 
+    ; timer1 control register a
     ldi     tmp, TIMER1A_CTR
     out     tccr1a, tmp
 
+    ; timer1 control register b
+    ; intially has prescalar 0 to turn
+    ;   wave generation off
     ldi     tmp, TIMER1B_CTR_PRESCALE0
     out     tccr1b, tmp
 
-    pop     tmp
+    pop     r16
     ret

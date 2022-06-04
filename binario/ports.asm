@@ -6,36 +6,18 @@
 ; -----------
 ; Initializes ports by specifying which ports are input/output.
 ;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; None
-;
-; User Interface
-; --------------
-; None
-;
-; Error Handling
-; --------------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Limitations
-; -----------
-; None
+; Routines
+; --------
+; InitSwitchPort: initializes port for switches and rotary encoders to input
+; InitDisplayPorts: initializes ports for LED display to output
+; InitSoundPort: initializes port for speaker to output
 ;
 ; Revision History
 ; ----------------
 ; 04/28/2022    Matt Muldowney      switch port init (port e)
 ; 05/10/2022    Matt Muldowney      display ports init (ports a, c, d)
 
-.CSEG
+.cseg
 
 ; InitSwitchPort Specification
 ; ============================
@@ -108,14 +90,14 @@
 ; -------------
 ; None
 InitSwitchPort:
-    PUSH    R16
+    push    r16
 
     ; set PortE as an input port
-    LDI     R16, INPUT
-    OUT     DDRE, R16
+    ldi     r16, input
+    out     ddre, r16
 
-    POP     R16
-    RET
+    pop     r16
+    ret
 
 ; InitDisplayPorts Specification
 ; ============================
@@ -183,17 +165,16 @@ InitSwitchPort:
 ; -------------
 ; None
 InitDisplayPorts:
-    ;;; registers needed
-    ; r16: holds OUTPUT port const
-    .def outp = r16
-    push outp
-    ldi outp, OUTPUT
+    push r16
 
-    out ddra, outp
-    out ddrc, outp
-    out ddrd, outp
+    ldi r16, OUTPUT
 
-    pop outp
+    ; set display ports to output
+    out ddra, r16
+    out ddrc, r16
+    out ddrd, r16
+
+    pop r16
     ret
 
 
