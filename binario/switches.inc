@@ -24,7 +24,7 @@
 ;   rotary encoder graycode value
 ; LRSWITCH_MASK: lr switch mask in port
 ; UDSWITCH_MASK: ud switch mask in port
-; DEBOUNCE_TIME: amount of time switch needs to be held down before
+; DEBOUNCE_TIME: amount of time (ms) switch needs to be held down before
 ;   considered a "press"
 ;
 ; Macros
@@ -84,15 +84,15 @@
 .equ    LRSWITCH_MASK   = 0b00100000
 .equ    UDSWITCH_MASK   = 0b00000100
 
-; switch timer starting value: counts down from 20ms in
+; switch timer starting value in ms
 ; -----------------------------------------------------
 .EQU    DEBOUNCE_TIME = 20
 
 
 
 
-; debounce(counter, switchPin, switchMask)
-; ========================================
+; debounce(counter, switchPin, switchMask, pressedFlag)
+; =====================================================
 ; 
 ; Description
 ; -----------
@@ -104,31 +104,30 @@
 ; held down, the counter will not decrement further, but will also not
 ; register a switch press, since it was already done when the counter was 1.
 ; Whenever the switch is not held down, the counter is reinit-ed to its
-; starting value. If a switch press is to be registered, the t flag will
-; be set; otherwise, the t flag is cleared.
+; starting value. If a switch press is to be registered, pressedFlag will
+; be set; otherwise, pressedFlag is cleared.
 ; Syntax:
-;   debounce    counter, switchPin, switchMask
+;   debounce    counter, switchPin, switchMask, pressedFlag
 ; where counter is a shared variable in data memory, switchPin is the input
-; pin that the switch resides on, and switchMask is the specific bit for the
-; switch's input pin.
+; pin that the switch resides on, switchMask is the specific bit for the
+; switch's input pin, and pressedFlag is a shared variable in data memory.
 ; 
 ; Operational Description
 ; -----------------------
 ; Reads in switchPin and masks off what we want with switchMask. Then,
-; it tst's the masked off reading and puts the result in t. It then
-; resolves the counter (back in data memory) based on the result. Then, it
-; ands this result with (local) counter (since we want to check if counter is 1)
-; and puts the result in t.
+; Calls DebounceHelper and sets pressedFlag = z flag.
 ; 
 ; Arguments
 ; ---------
 ; counter (16-bit address): location of counter variable in data memory
 ; switchPin: I/O pin that the switch is on
 ; switchMask: const for masking switch off pin
+; pressedFlag (16-bit address): location of the boolean in data memory that
+;   indicates the switch was pressed
 ; 
 ; Return Values
 ; -------------
-; t: set iff switch press should be registered
+; None
 ; 
 ; Global Variables
 ; ----------------
@@ -142,7 +141,7 @@
 ; ---------------
 ; switchPinReading: for reading in i/o switch pin
 ; localCounter: local copy of counter (since we might reset it)
-; tReading: for checking t flag
+; isPressed: local copy to store in pressedFlag
 ; 
 ; Inputs
 ; ------
@@ -170,7 +169,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 6 bytes
+; 2 bytes
 ;
 ; Limitations
 ; -----------
@@ -184,24 +183,15 @@
 ; -------------
 ; None
 .macro  debounce
-    push    r21
-    push    r22
-    push    r23
-    push    yl
-    push    yh
+    push    r16
+    push    r17
 
     ; for reading in switch pin
-    .def    switchPinReading = r23
+    .def    switchPinReading = r17
 
     ; for storing counter locally
-    .def    localCounter = r22
+    .def    localCounter = r16
     lds     localCounter, @0
-
-    ; for checking if counter is 1 and t is 1
-    .def    counterAndT = r21
-    ; set to all 1's initially so that we can get a reading
-    ;   of all the counter bits (not just the lowest bit)
-    ldi     counterAndT, 0xFF
 
     ;;; read switch pin and mask off the thing we want
     in      switchPinReading, @1
@@ -210,34 +200,38 @@
     ; mask off switch's pin bit
     andi    switchPinReading, @2
 
-    ;;; put reading into t flag
-    tstWithT    switchPinReading
+    ;;; call debounce helper
+    ; counter in r16
+    ; switchReading in r17
+    rcall   DebounceHelper
+    ; updated counter in r16
+    ; z flag set iff switch pressed
 
-    ;;; based on result, resolve the counter (dec/reinit/don't do anything)
-    ldi     yl, low(@0)
-    ldi     yh, high(@0)
-    rcall   ResolveSwitchCounter
+    ;;; move z flag to pressedFlag
+    ; reuse r17
+    ; for reading z flag into pressedFlag
+    .def    isPressed = r17
 
-    ;;; set t according to pin reading and current count value
-    ; get current t value (indicates pin reading) in last bit of counterAndT
-    bld     counterAndT, 0
-    ; and counter[0] and t, and put counter[7,1] in the rest
-    and     counterAndT, localCounter
-    subi    counterAndT, 1
-    ; if counter was 1, counterAndT should now be 0
-    tstWithT    counterAndT
+    ; read in sreg
+    in      isPressed, sreg
+    ; z flag in sreg[1], so lsr
+    lsr     isPressed
+    ; and mask off
+    andi    isPressed, TRUE
+    ; finally, store in data memory flag
+    sts     @3, isPressed
 
-    pop     yh
-    pop     yl
-    pop     r23
-    pop     r22
-    pop     r21
+    ; also store counter back in data memory
+    sts     @0, localCounter
+
+    pop     r17
+    pop     r16
 .endm
 
 
 
-; derot(grayCodeStack, fullTurn, rotPin, rotBit1, rotBit2)
-; ========================================================
+; derot(grayCodeStack, fullTurn, rotPin, rotBit1, rotBit2, rotFlag)
+; =================================================================
 ; 
 ; Description
 ; -----------
@@ -246,35 +240,39 @@
 ; jiggling in between detents. A full turn is registered iff the encoder
 ; reading (from rotPin[rotBit1,2]) == ON_DETENT and the 
 ; grayCodeStack == fullTurn.
-; If a full turn is registered, the t flag will be set; otherwise, the
-; t flag will be cleared. Moreover, the grayCodeStack is updated in the following
-; manner:
+; If a full turn is registered, the rotFlag will be set to TRUE; otherwise, the
+; rotFlag flag will be cleared. Moreover, the grayCodeStack is updated in the
+; following manner:
 ;   full turn --> reinitialized
 ;   otherwise --> if encoderReading == 2 readings previous, popped off 
 ;                       grayCodeStack
 ;                   if encoderReading == previous reading, do nothing
 ;                   otherwise, encoderReading pushed onto grayCodeStack
 ; Syntax:
-;   derot   grayCodeStack, fullTurn, rotPin, rotBit1, rotBit2
+;   derot   grayCodeStack, fullTurn, rotPin, rotBit1, rotBit2, rotFlag
 ; where grayCodeStack is a data memory variable, fullTurn is an immediate,
-; rotPin is an I/O pin, and rotMask is an immediate.
+; rotPin is an I/O pin, rotMask is an immediate, and rotFlag is a
+; data memory variable.
 ; 
 ; Operational Description
 ; -----------------------
 ; Reads in from rotPin and masks off with rotMask, then calls DerotHelper.
+; Then sets rotFlag according to z flag.
 ; 
 ; Arguments
 ; ---------
-; grayCodeStack (8-bitdata memory variable): stack of previous encoder readings
+; grayCodeStack (16-bit address): stack of previous encoder readings
 ; fullTurn (8-bit immediate): what the grayCodeStack will be after a
 ;   full turn
 ; rotPin (I/O pin): pin in which rotary encoder resides on
 ; rotBit1 (immediate): first bit of rotary encoder on pin
 ; rotBit2 (immediate): second bit of rotary encoder on pin
+; rotFlag (16-bit address): location of the boolean in data memory that
+;   indicates the rotary encoder was turned
 ; 
 ; Return Values
 ; -------------
-; t: set if full turn registered, cleared otherwise
+; none
 ; 
 ; Global Variables
 ; ----------------
@@ -316,7 +314,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 5 bytes
+; 4 bytes
 ;
 ; Limitations
 ; -----------
@@ -359,6 +357,23 @@
 
     ;;; call helper
     rcall   DerotHelper
+    ; updated graycodestack in r16
+    ; z flag set iff encoder turned
+
+    ;;; move z flag to rotFlag
+    ; reuse r17
+    ; for reading z flag into rotFlag
+    .def    isRot = r17
+
+    ; read in sreg
+    in      isRot, sreg
+    mov     zl, isRot
+    ; z flag in sreg[1], so lsr
+    lsr     isRot
+    ; and mask off
+    andi    isRot, TRUE
+    ; finally, store in data memory flag
+    sts     @5, isRot
 
     ;;; load new grayCodeStack into data memory
     sts     @0, grayCodeStackReg

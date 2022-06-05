@@ -45,7 +45,10 @@
 .include  "m64def.inc"
 
 ;include all the .inc files since all .asm files are needed here (no linker)
+.include "timers.inc"
+.include "ports.inc"
 .include "switches.inc"
+.include "sound.inc"
 .include "util.inc"
 
 
@@ -74,7 +77,7 @@
         JMP     PC                      ;timer 1 compare match A
         JMP     PC                      ;timer 1 compare match B
         JMP     PC                      ;timer 1 overflow
-        JMP     SwitchEventHandler      ;timer 0 compare match
+        JMP     Timer0EventHandler      ;timer 0 compare match
         JMP     PC                      ;timer 0 overflow
         JMP     PC                      ;SPI transfer complete
         JMP     PC                      ;UART 0 Rx complete
@@ -95,62 +98,6 @@
         JMP     PC                      ;Two-wire serial interface
         JMP     PC                      ;store program memory ready
 
-
-.EQU    TIMER0_CTR  =   0b00001011
-
-; Timer0 output compare value (for OCR0)
-; --------------------------------------
-; Clock runs at 8 MHz, want frequency of 1 KHz
-; --> 8x10^6 / 32x10^3  = 250
-.EQU    TIMER0_COMP =   250
-
-; bit to set in TIMSK to enable Timer0 interrupts on compare match
-; ----------------------------------------------------------------
-.equ    OCIE0_Bit   =   0b00000010
-
-InitTimer0:
-    ;;; registers needed
-    ; tmp register
-    .def    tmp = r16
-    push    tmp
-
-    ; register to in timsk
-    .def    timskReg = r17
-    push    timskReg
-    clr     timskReg
-
-    ldi     tmp, TIMER0_CTR
-    out     tccr0, tmp
-
-    ldi     tmp, TIMER0_COMP
-    out     ocr0, tmp
-
-    ; set OCIE0_BIT in timsk
-    ori     timskReg, OCIE0_BIT
-    out     timsk, timskReg
-
-    pop     timskReg
-    pop     tmp
-    ret
-
-LRSwitch:
-    checkBool   lrSwitchPressed
-
-UDSwitch:
-    checkBool   udSwitchPressed
-
-LeftRot:
-    checkBool   lrRotLeft
-
-RightRot:
-    checkBool   lrRotRight
-
-UpRot:
-    checkBool   udRotUp
-
-DownRot:
-    checkBool   udRotDown
-
 ; start of the actual program
 
 Start:                                  ;start the CPU after a reset
@@ -159,13 +106,11 @@ Start:                                  ;start the CPU after a reset
         LDI     R16, HIGH(TopOfStack)
         OUT     SPH, R16
 
-
-        ;call any initialization functions
-        clr     r16
-        out     ddre, r16
-
-        RCALL   InitSwitchVars
+        rcall   ClearBuff
+        
+        rcall   InitSwitchPort
         RCALL   InitTimer0
+        RCALL   InitSwitchVars
         SEI
 
 
@@ -402,7 +347,27 @@ StoreBuff:
         RET                     ;all done, return
 
 
+ClearBuff:
+    push r16
+    push r17
+    push yl
+    push yh
 
+    ldi     yl, low(KeyBuf)
+    ldi     yh, high(KeyBuf)
+    ldi     r16, 255
+    ldi     r17, 0
+
+ClearBuffLoop:
+    st  y+, r17
+    dec r16
+    brne ClearBuffLoop
+
+    pop yh
+    pop yl
+    pop r17
+    pop r16
+    ret
 
 ;the data segment
 
@@ -424,4 +389,6 @@ TopOfStack:     .BYTE   1               ;top of the stack
 ; since don't have a linker, include all the .asm files
 
 .include "switches.asm"
+.include "timers.asm"
+.include "ports.asm"
 

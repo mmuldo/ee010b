@@ -208,34 +208,31 @@ InitTimer0:
 ; -------------
 ; None
 Timer0EventHandler:
-    ;;; LOGIC COMMENTED OUT FOR NOW B/C WE DON'T WANT TO
-    ;;; DO ANY SWITCH/DISPLAY LOGIC FOR HW4
-
-	;; need r0 for sreg
-	;push r0
- ;   ; save sreg into r0
- ;   in r0, sreg
-	;; push r0 again in case functions below mess it up
- ;   push r0
+	; need r0 for sreg
+	push r0
+    ; save sreg into r0
+    in r0, sreg
+	; push r0 again in case functions below mess it up
+    push r0
 	
-	;; multiplexdisplay uses y and z registers, so we need
-	;;	to save those
-	;push yl
-	;push yh
-	;push zl
-	;push zh
+	; multiplexdisplay uses y and z registers, so we need
+	;	to save those
+	push yl
+	push yh
+	push zl
+	push zh
 
- ;   rcall SwitchEventHandler
- ;   rcall MultiplexDisplay
+    rcall SwitchEventHandler
+    ;rcall MultiplexDisplay
 
 
-	;pop zh
-	;pop zl
-	;pop yh
-	;pop yl
- ;   pop r0
- ;   out sreg, r0
-	;pop r0
+	pop zh
+	pop zl
+	pop yh
+	pop yl
+    pop r0
+    out sreg, r0
+	pop r0
 
     reti
 
