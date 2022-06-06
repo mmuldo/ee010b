@@ -541,12 +541,11 @@ Saturate:
 ;
 ; Registers Used
 ; --------------
-; r16: byte
-; r17: k
+; r16
 ;
 ; Stack Depth
 ; -----------
-; None
+; 1 byte
 ;
 ; Limitations
 ; -----------
@@ -556,16 +555,22 @@ Saturate:
 ; -------------
 ; None
 lslk:
-    .def byte = r16 ; r16: the thing we are lsl-ing
-    .def k = r17    ; r17: the amount to lsl
+    push    r17
+
+    ;;; arguments
+    ; the thing we're lsl-ing
+    .def    byte = r16
+    ; the amount to lsl
+    .def    k = r17
 
   lslLoop:
-    cpi     k, 0
-    breq    lslDone
-    lsl     byte
     dec     k
+    brlt    lslDone
+    lsl     byte
     jmp     lslLoop
+
   lslDone:
+    pop     r17
     ret
 
 

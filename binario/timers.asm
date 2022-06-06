@@ -215,21 +215,9 @@ Timer0EventHandler:
 	; push r0 again in case functions below mess it up
     push r0
 	
-	; multiplexdisplay uses y and z registers, so we need
-	;	to save those
-	push yl
-	push yh
-	push zl
-	push zh
-
     rcall SwitchEventHandler
-    ;rcall MultiplexDisplay
+    rcall MultiplexDisplay
 
-
-	pop zh
-	pop zl
-	pop yh
-	pop yl
     pop r0
     out sreg, r0
 	pop r0

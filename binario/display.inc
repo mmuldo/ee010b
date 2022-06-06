@@ -12,6 +12,21 @@
 ;                                       (from 500 ms)
 ; 05/31/2022    Matt Muldowney      pltimg macro
 
+; colors
+; ======
+.equ    OFF     = 0
+.equ    RED     = 1
+.equ    GREEN   = 2
+.equ    YELLOW  = 3
+
+
+; colors
+; ======
+.equ    PIXEL_OFF     = 0
+.equ    PIXEL_RED     = 1
+.equ    PIXEL_GREEN   = 2
+.equ    PIXEL_YELLOW  = 3
+
 ; LED display matrix
 ; ==================
 ; 8 red and green rows
@@ -42,26 +57,115 @@
 .equ    CURSOR_ROW_INIT = NUM_ROWS
 .equ    CURSOR_COL_INIT = NUM_COLS
 
-; alternate cursor color
-.equ    CURSOR_RED_COLOR1_INIT    = 0
-.equ    CURSOR_GREEN_COLOR1_INIT  = 0
-.equ    CURSOR_RED_COLOR2_INIT    = 0
-.equ    CURSOR_GREEN_COLOR2_INIT  = 0
-
-; colors
-; ======
-.equ    OFF     = 0
-.equ    RED     = 1
-.equ    GREEN   = 2
-.equ    YELLOW  = 3
+; initial cursor colors
+.equ    CURSOR_COLOR1_INIT  = OFF
+.equ    CURSOR_COLOR2_INIT  = OFF
 
 
-; colors
-; ======
-.equ    PIXEL_OFF     = 0
-.equ    PIXEL_RED     = 1
-.equ    PIXEL_GREEN   = 2
-.equ    PIXEL_YELLOW  = 3
+
+
+; colorToRG(colorReg, greenReg, redReg)
+; =====================================
+;
+; Description
+; -----------
+; Wrapper for accessing ColorToRGTab table.
+; Syntax:
+;   colorToRG   Rr, Rd1, Rd2
+; Where 16 <= r, d1, d2 <= 31.
+;
+; Operational Description
+; -----------------------
+; loads ColorToRGTab label into z register, offsets based on colorReg,
+; then lpms into greenReg and redReg.
+;
+; Arguments
+; ---------
+; colorReg (int, Rr): the color, stored in a register
+;
+; Return Values
+; -------------
+; greenReg (bool, Rd1): indicates if green LED should be on
+; redReg (bool, Rd1): indicates if red LED should be on
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None: doesn't handle bad inputs (i.e. when colorReg != OFF, RED, GREEN, YELLOW)
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 2 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  colorToRG
+    ; push colorReg arg out of convenience to caller
+    push    @0
+    push    zl
+    push    zh
+
+    ; load pm label into z
+    ldi     zl, low(2*ColorToRGTab)
+    ldi     zh, high(2*ColorToRGTab)
+
+    ; multiply offset (colorReg) by 2 to correct addressing
+    lsl     @0
+    ; adjust z by offset
+    add     zl, @0
+    ; reuse colorReg for zero
+    clr     @0
+    adc     zh, @0
+
+    ; first byte is green bool
+    lpm     @1, z+
+    ; second byte is red bool
+    lpm     @2, z
+
+    pop     zh
+    pop     zl
+    pop     @0
+.endm
 
 
 ; pltimg(ptr)

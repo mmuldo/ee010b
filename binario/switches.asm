@@ -297,10 +297,8 @@ InitSwitchVars:
 ; -------------
 ; None
 SwitchEventHandler:
-    nop
     ;;; debounce lr switch
     debounce    lrSwitchCounter, pine, LRSWITCH_MASK, lrSwitchPressed
-    nop
 
     ;;; debounce ud switch
     debounce    udSwitchCounter, pine, UDSWITCH_MASK, udSwitchPressed

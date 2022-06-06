@@ -367,7 +367,6 @@
 
     ; read in sreg
     in      isRot, sreg
-    mov     zl, isRot
     ; z flag in sreg[1], so lsr
     lsr     isRot
     ; and mask off

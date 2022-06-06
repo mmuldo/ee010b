@@ -66,7 +66,6 @@
                                 ; conjunction with columnMaskG) that 
                                 ; determines which column of LEDs to write
 
-
     useCursorColor2:    .byte 1 ; when False, use color1 for cursor
                                 ; when True use color2 for cursor
     cursorChangeCounter: .byte 1; when this hits 0, change the cursor color
@@ -74,16 +73,29 @@
     cursorRow:          .byte 1 ; Row of display in which cursor resides
     cursorColumn:       .byte 1 ; Row of display in which column resides
 
-    cursorRedColor1:    .byte 1 ; whether or not red LED should be turned on 
-                                ; for first blink of cursor
-    cursorGreenColor1:  .byte 1 ; whether or not green LED should be turned on 
-                                ; for first blink of cursor
-    cursorRedColor2:    .byte 1 ; whether or not red LED should be turned on 
-                                ; for second blink of cursor
-    cursorGreenColor2:  .byte 1 ; whether or not green LED should be turned on 
-                                ; for second blink of cursor
+    cursorColor1:    .byte 1    ; color for first blink of cursor
+    cursorColor2:    .byte 1    ; color for second blink of cursor
 
 .cseg
+
+
+; ColorToRGTab(color)
+; ===================
+;
+; Description
+; -----------
+; Maps a color to a tuple of booleans indicating (greenOn, redOn).
+; The mapping is:
+;   OFF     -> FALSE, FALSE
+;   RED     -> FALSE, TRUE
+;   GREEN   -> TRUE,  FALSE
+;   YELLOW  -> TRUE,  TRUE
+ColorToRGTab:
+    .db   FALSE,  FALSE   ; OFF
+    .db   FALSE,  TRUE    ; RED
+    .db   TRUE,   FALSE   ; GREEN
+    .db   TRUE,   TRUE    ; YELLOW
+
 
 ; SetCursor(r, c, c1, c2)
 ; =======================
@@ -179,81 +191,46 @@
 ; -------------
 ; None
 SetCursor:
+    push    r20
+    push    r21
+
     ;;; arguments
-    .def r = r16    ; row
-    .def c = r17    ; column
-    .def c1 = r18   ; cursor color 1
-    .def c2 = r19   ; cursor color 2
+    .def    r = r16    ; row
+    .def    c = r17    ; column
+    .def    c1 = r18   ; cursor color 1
+    .def    c2 = r19   ; cursor color 2
     
     ;;; other registers we need
-    .def red1 = r21
-    push red1        ; cursor red color 1
+    ; for withinBounds tests
+    .def    offReg = r20
+    ; for withinBounds tests
+    .def    yellowReg = r21
 
-    .def green1 = r22
-    push green1        ; cursor green color 1
+    ;;; argument validity checks
 
-    .def red2 = r23
-    push red2        ; cursor red color 2
+    ; OFF <= c1 <= YELLOW
+    ldi     offReg, OFF
+    ldi     yellowReg, YELLOW
+    withinBounds  c1, offReg, yellowReg
+    brtc    SetCursorReturn
 
-    .def green2 = r24
-    push green2        ; cursor green color 2
+    ; OFF <= c2 <= YELLOW
+    withinBounds  c2, offReg, yellowReg
+    brtc    SetCursorReturn
 
 
     ;;; set the (row, column) position of the cursor
-    sts cursorRow, r
-    sts cursorColumn, c
+    sts     cursorRow, r
+    sts     cursorColumn, c
 
-
-    ;;; saturate c1, c2 args if invalid (less than OFF, greater than YELLOW)
-    ; OFF <= c1 <= YELLOW
-    mov r16, c1
-    ldi r17, OFF
-    ldi r18, YELLOW
-    rcall Saturate
-    ; recover r16 -> c1
-    mov c1, r16
-
-    ; push c1 since we need to overwrite for function call (no longer need
-    ;   to save r, c)
-    push c1
-    ; OFF <= c2 <= YELLOW
-    mov r16, c2
-    ldi r17, OFF
-    ldi r18, YELLOW
-    rcall Saturate
-    ; recover c1 for later stuff
-    pop c1
-    ; copy r16 to c2
-    mov c2, r16
-
-
-    ;;; set the color information of the cursor
-    ; red1 is bit0 of c1
-    mov red1, c1
-    andi red1, TRUE
-    sts cursorRedColor1, red1
-
-    ; green1 is bit 1 of c1
-    mov green1, c1
-    lsr green1
-    sts cursorGreenColor1, green1
-
-    ; red2 is bit0 of c2
-    mov red2, c2
-    andi red2, TRUE
-    sts cursorRedColor2, red2
-
-    ; green2 is bit 2 of c2
-    mov green2, c2
-    lsr green2
-    sts cursorGreenColor2, green2
+    ;;; set cursorColor1, cursorColor2
+    sts     cursorColor1, c1
+    sts     cursorColor2, c2
     
-    
-    ;;; return
-    pop green2
-    pop red2
-    pop green1
-    pop red1
+  SetCursorReturn:
+    pop     r21
+    pop     r20
+
     ret
 
 
@@ -333,45 +310,46 @@ SetCursor:
 ; -------------
 ; None
 ClearDisplay:
-    ;;; push needed registers
-    .def blank = r16 ; r16: OFF
-    push blank        ; r16: OFF
-    ldi blank, OFF
+    push    r16
+    push    r17
+    push    yl
+    push    yh
+    push    zl
+    push    zh
 
-    .def idx = r17
-    push idx        ; r17: loop index
+    ; just holds OFF
+    .def    offReg = r16
+    ldi     offReg, OFF
+
+    ; loop index
+    .def    idx = r17
+
+    ; y: redBuffer
+    ldi     yl, low(redBuffer)
+    ldi     yh, high(redBuffer)
+    ; z: greenBuffer
+    ldi     zl, low(greenBuffer)
+    ldi     zh, high(greenBuffer)
 
 
-    ; y: redBuffer, z: greenBuffer
-    push yl
-    push yh
-    ldi yl, low(redBuffer)
-    ldi yh, high(redBuffer)
-    push zl
-    push zh
-    ldi zl, low(greenBuffer)
-    ldi zh, high(greenBuffer)
-
-
-    ;;; turn off every column in red and green buffers
-    ldi idx, 0
+    ; initialize loop var to NUM_COLS
+    ldi     idx, NUM_COLS
   ClearBuffersLoop:
-    st y+, blank
-    st z+, blank
-    inc idx
-    cpi idx, NUM_COLS
-    brlt ClearBuffersLoop
-    
+    ;;; turn off every column in red and green buffers
+    st      y+, offReg
+    st      z+, offReg
+    dec     idx
+    ; keep looping until idx hits 0
+    brne    ClearBuffersLoop
 
     ;;; return
     pop zh
     pop zl
     pop yh
     pop yl
-    pop idx
-    pop blank
+    pop r17
+    pop r16
     ret
-
 
 
 
@@ -457,138 +435,112 @@ ClearDisplay:
 ; -------------
 ; None
 PlotPixel:
+    push    r19
+    push    r20
+    push    r21
+    push    yl
+    push    yh
+
     ;;; arguments
-    .def r = r16        ; r16: display row
-    .def c = r17        ; r17: display column
-    .def color = r18    ; r18: color to set
+    ; row on display
+    .def    r = r16
+    ; column on display
+    .def    c = r17
+    ; color to set at buffer[r, c]
+    .def    color = r18
     
+    ;;; other registers needed
+    ; for argument validity checks; zero also used for adding 16-bits to 8-bits
+    .def    zero = r19
+    .def    numRowsReg = r20
+    ; reuse r20 since we don't need numColsRegand and numRowsReg simultaneously
+    .def    numColsReg = r20
+    ; reuse r19 since we don't need offReg and zero simultaneously
+    .def    offReg = r19
+    ; reuse r20 since we don't need yellowReg and numRowsReg simultaneously
+    .def    yellowReg = r20
 
-    ;;; check validity of (r,c) , return if invalid
-    ; save color since overwritten by function call
-    push color
-    ldi r18, TRUE ; we can use this for each call since CheckValid only
-                    ; changes its value if invalid
+    ; for storing red, green LED on states of color
+    ; reuse r20 since don't need yellowReg when using this
+    .def    redOn = r20
+    .def    greenOn = r21
 
-    ; save r, c since overwritten by function call
-    push r
-    push c
-    ; r must be >= 0
-    mov r16, r
-    ldi r17, 0
-    rcall CheckValid
+    ; for updating buffer
+    .def    bufferRowVector = r19
 
-    ; r must be <= NUM_ROWS-1
-    mov r17, r
-    ldi r16, NUM_ROWS
-    dec r16
-    rcall CheckValid
+    ;;; check validity of (r,c), return if invalid
+    ; must have 0 <= r <= NUM_ROWS
+    clr     zero
+    ldi     numRowsReg, NUM_ROWS
+    withinBounds    r, zero, numRowsReg
+    brtc    PlotPixelReturnDetour
+    ; must have 0 <= c <= NUM_COLS
+    ldi     numRowsReg, NUM_ROWS
+    withinBounds    c, zero, numColsReg
+    brtc    PlotPixelReturnDetour
 
-    ; recover c -> r16
-    pop r16
-    ; c must be >= 0
-    ldi r17, 0
-    rcall CheckValid
+    ;;; check validity of color, return if invalid
+    ldi     offReg, OFF
+    ldi     yellowReg, YELLOW
+    withinBounds    color, offReg, yellowReg
+    brtc    PlotPixelReturnDetour
+    jmp     PlotPixelGetOnStates
 
-    ; copy c (in r16 at the moment) to r17)
-    mov r17, r16
-    ; c must be <= NUM_COLS-1
-    ldi r16, NUM_COLS
-    dec r16
-    rcall CheckValid
-    
-    ; recover r and c
-    mov c, r17
-    pop r
-
-    ; return if any of the above args are invalid
-    cpi r18, TRUE
-    ; recover color
-    pop color
-    brne Return_PlotPixel
-
-    
-    ;;; other registers we need
-    .def redOn = r19
-    push redOn            ; r19: red color
-    .def greenOn = r20
-    push greenOn            ; r20: green color
-    .def zero = r21       ; immediate 0
-    push zero
-    ldi zero, 0
-    
-
-    ;;; check validity of color, set to nearest bound (OFF or YELLOW) if out
-    ;;;     of bounds
-    ; save r, c since overwritten by function call
-    push r
-    push c
-    ; color must be >= OFF
-    mov r16, color
-    ldi r17, OFF
-    ldi r18, YELLOW
-    rcall Saturate
-    pop c
-    mov color, r16
-    pop r
+  PlotPixelReturnDetour:
+    ;;; need this because the brtc's are out of range of PlotPixelReturn
+    jmp     PlotPixelReturn
 
 
-    ;;; set red/greenBuffer[r, c] according to red/greenOn
-    ; red is bit0 of color
-    mov redOn, color
-    andi redOn, TRUE
+  PlotPixelGetOnStates:
+    ;;; the on states of red, green LEDS
+    colorToRG   color, redOn, greenOn
 
-    ; green is bit 1 of color
-    mov greenOn, color
-    lsr greenOn
 
+    ;;; set redBuffer[r, c] = redOn
     ; put y at redBuffer[c]
-    ldi yl, low(redBuffer)
-    ldi yh, high(redBuffer)
-    add yl, c
-    adc yh, zero
-    
-    ; put z at greenBuffer[c]
-    ldi zl, low(greenBuffer)
-    ldi zh, high(greenBuffer)
-    add zl, c
-    adc zh, zero
+    clr     zero
+    ldi     yl, low(redBuffer)
+    ldi     yh, high(redBuffer)
+    add     yl, c
+    adc     yh, zero
 
-    
-    ; prepare for Set/ClearBit function calls
-    mov r17, r
-    ld r16, y
-    ; if redOn is TRUE...
-    cpi redOn, TRUE
-    brne ClearRedBufferCR_PlotPixel
-    ; then set redBuffer[c][r]
-    rcall SetBit
-    jmp StoreRedBufferBack_PlotPixel
-  ClearRedBufferCR_PlotPixel:
-    rcall ClearBit
-    ;jmp StoreRedBufferBack_PlotPixel
-  StoreRedBufferBack_PlotPixel:
-    st y, r16
+    ; get the row vector at redBuffer[c]
+    ld      bufferRowVector, y
 
-    ; prepare for Set/ClearBit function calls
-    ld r16, z
-    ; note r is already in r17
-    ; if greenOn is TRUE...
-    cpi greenOn, TRUE
-    brne ClearGreenBufferCR_PlotPixel
-    ; then set greenBuffer[c][r]
-    rcall SetBit
-    jmp StoreGreenBufferBack_PlotPixel
-  ClearGreenBufferCR_PlotPixel:
-    rcall ClearBit
-    ;jmp StoreGreenBufferBack_PlotPixel
-  StoreGreenBufferBack_PlotPixel:
-    st z, r16
-    
-    pop zero
-    pop greenOn
-    pop redOn
+    ; check if red LED should be on
+    cpi     redOn, TRUE
+    ; set redBuffer[r, c] according to z flag
+    setBitToZ   bufferRowVector, r
 
-  Return_PlotPixel:
+    ; store updated rowVector back in redBuffer[c]
+    st      y, bufferRowVector
+
+
+    ;;; set greenBuffer[r, c] = greenOn
+    ; put y at greenBuffer[c]
+    clr     zero
+    ldi     yl, low(greenBuffer)
+    ldi     yh, high(greenBuffer)
+    add     yl, c
+    adc     yh, zero
+
+    ; get the row vector at greenBuffer[c]
+    ld      bufferRowVector, y
+
+    ; check if green LED should be on
+    cpi     greenOn, TRUE
+    ; set greenBuffer[r, c] according to z flag
+    setBitToZ   bufferRowVector, r
+
+    ; store updated rowVector back in greenBuffer[c]
+    st      y, bufferRowVector
+
+  PlotPixelReturn:
+    pop     yh
+    pop     yl
+    pop     r21
+    pop     r20
+    pop     r19
     ret
 
 
@@ -673,48 +625,44 @@ PlotPixel:
 ; -------------
 ; None
 InitDisplayVars:
-    ;;; registers needed
-    .def temp = r16
-    push temp        ; r16: multipurpose
+    push    r16
+    push    r17
+    push    r18
+    push    r19
 
 
-    rcall ClearDisplay
+    rcall   ClearDisplay
 
     ; init buffer offset (for display mux)
-    ldi temp, BUFF_OFFSET_INIT
-    sts ledBufferOffset, temp
+    ldi     r16, BUFF_OFFSET_INIT
+    sts     ledBufferOffset, r16
     
     ; init column masks (for display mux)
-    ldi temp, COL_MASK_G_INIT
-    sts columnMaskG, temp
-    ldi temp, COL_MASK_R_INIT
-    sts columnMaskR, temp
+    ldi     r16, COL_MASK_G_INIT
+    sts     columnMaskG, r16
+    ldi     r16, COL_MASK_R_INIT
+    sts     columnMaskR, r16
     
     ; init cursor change counter
-    ldi temp, CURSOR_COUNTER_INIT
-    sts cursorChangeCounter, temp
+    ldi     r16, CURSOR_COUNTER_INIT
+    sts     cursorChangeCounter, r16
 
-    ; init cursor blinking
-    ldi temp, USE_CURSOR_COLOR2_INIT
-    sts useCursorColor2, temp
+    ; init which color cursor starts on
+    ldi     r16, USE_CURSOR_COLOR2_INIT
+    sts     useCursorColor2, r16
 
-    ; init cursor position
-    ldi temp, CURSOR_ROW_INIT
-    sts cursorRow, temp
-    ldi temp, CURSOR_COL_INIT
-    sts cursorColumn, temp
+    ; init cursor position (should be off grid so that we don't
+    ; initially see the cursor) and colors
+    ldi     r16, CURSOR_ROW_INIT
+    ldi     r17, CURSOR_COL_INIT
+    ldi     r18, CURSOR_COLOR1_INIT
+    ldi     r19, CURSOR_COLOR2_INIT
+    rcall   SetCursor
 
-    ; init cursor colors
-    ldi temp, CURSOR_RED_COLOR1_INIT
-    sts cursorRedColor1, temp
-    ldi temp, CURSOR_GREEN_COLOR1_INIT
-    sts cursorGreenColor1, temp
-    ldi temp, CURSOR_RED_COLOR2_INIT
-    sts cursorRedColor2, temp
-    ldi temp, CURSOR_GREEN_COLOR2_INIT
-    sts cursorGreenColor2, temp
-
-    pop temp
+    pop     r19
+    pop     r18
+    pop     r17
+    pop     r16
     ret
 
 
@@ -762,11 +710,8 @@ InitDisplayVars:
 ; useCursorColor2 (bool): RW
 ; cursorRow (int): R
 ; cursorColumn (int): R
-; cursorRedColor1 (int): R
-; cursorGreenColor1 (int): R
-; cursorRedColor2 (int): R
-; cursorGreenColor2 (int): R
-;
+; cursorColor1 (int): R
+; cursorColor2 (int): R
 ;
 ; Local Variables
 ; ---------------
@@ -798,11 +743,11 @@ InitDisplayVars:
 ;
 ; Registers Used
 ; --------------
-; y
+; none
 ;
 ; Stack Depth
 ; -----------
-; 8 bytes
+; 11 bytes
 ;
 ; Limitations
 ; -----------
@@ -816,199 +761,191 @@ InitDisplayVars:
 ; -------------
 ; None
 MultiplexDisplay:
+    push        r16
+    push        r17
+    push        r18
+    push        r19
+    push        r20
+    push        r21
+    push        yl
+    push        yh
+
+    ;;; before we start, turn all columns off
+    ldi         r16, OFF
+    out         porta, r16
+    out         portd, r16
+
     ;;; registers needed
-    ; r16: temporary stuff
-    .def temp = r16
-    push temp
+    ; for loading current cursor color
+    .def        cursorColor = r16
+    ; indicates if current cursor's green LED is on
+    .def        cursorRed = r17
+    ; indicates if current cursor's red LED is on
+    .def        cursorGreen = r18
+    ; holds the cursor LED on state (cursorRed or cursorGreen) 
+    ;   we are using (reuse r16 since by the time we need this 
+    ;   we won't need cursorColor)
+    .def        cursorBit = r16
 
-    ; r17, r18: column masks
-    .def colMaskG = r17
-    push colMaskG
-    lds colMaskG, columnMaskG
-    .def colMaskR = r18
-    push colMaskR
-    lds colMaskR, columnMaskR
+    ; holds the column masks columnMaskG and columnMaskR
+    .def        colMaskGReg = r19
+    .def        colMaskRReg = r21
 
-    ; r19: buffer offset
-    .def bufferOffset = r19
-    push bufferOffset
-    lds bufferOffset, ledBufferOffset
+    ; for loading ledBufferOffset (reuse r17 since by the time we
+    ;   need this we won't need cursorRed)
+    .def        bufferOffsetReg = r17
 
-    ; r20, r21: cursor stuff
-    .def useColor2 = r20
-    push useColor2
-    lds useColor2, useCursorColor2
-    .def changeCounter = r21
-    push changeCounter
-    lds changeCounter, cursorChangeCounter
+    ; for holding 0 (for 16-bit + 8-bit) (reuse r18 since by the time we
+    ;   need this we won't need cursorRed)
+    .def        zero = r18
 
-    ; r22: the cursor color we are setting (could be for red/green 1/2 
-    ;   depending)
-    .def cursorColor = r22
-    push cursorColor
-    
-    ; r23: immediate 0
-    .def zero = r23
-    push zero
-    ldi zero, 0
+    ; for comparing buffer offset to cursor's column (reuse r18 since we
+    ;   don't need zero at the same time we need this)
+    .def        cursorColumnReg = r18
+    ; for setting/clearing rowVector[cursorRow] according to cursor when
+    ;   we're on the cursor's column (reuse r18 since we don't need
+    ;   cursorColumnReg at the same time we need this)
+    .def        cursorRowReg = r18
 
-    ; y: buffer
-    push yl
-    push yh
+    ; for clearing/setting bit in register (reuse r18 since
+    ;   don't need cursorRowRegby the time we need this)
+    .def        oneHotBit = r18
 
+    ; for holding the current column's corresponding row vector
+    .def        rowVector = r20
 
-    ;;; turn off all columns
-    ldi temp, OFF
-    out porta, temp
-    out portd, temp
+    ;;; get current cursor color
+    ; check if we are using color1 or color2 for cursor
+    toggleOn0   useCursorColor2, cursorChangeCounter, CURSOR_COUNTER_INIT
 
+    ; z = !useCursorColor2
+    brne        MultiplexDisplayUseCursorColor2
+    lds         cursorColor, cursorColor1
+    jmp         MultiplexDisplayGetCursorRG
+  MultiplexDisplayUseCursorColor2:
+    lds         cursorColor, cursorColor2
 
-    ;;; figure out if we want to load green or red into Y
-    ; if the 1 is not in columnMaskG...
-    cpi colMaskG, 0
-    ; load red buffer
-    breq LoadRedBuffer
-    ; otherwise , load green buffer
-    ldi yl, low(greenBuffer)
-    ldi yh, high(greenBuffer)
+  MultiplexDisplayGetCursorRG:
+    ; convert cursor color to its red/green on states
+    colorToRG   cursorColor, cursorGreen, cursorRed
 
-    ; if currently using cursor color 2...
-    cpi useColor2, TRUE
-    ; load green cursor color 2
-    breq UseCursorGreenColor2
-    ; otherwise, load green cursor color 1
-    lds cursorColor, cursorGreenColor1
-    jmp ResolveCursorInBuffer
-  UseCursorGreenColor2:
-    ; load green cursor color 2 if useColor2 is true
-    lds cursorColor, cursorGreenColor2
-    jmp ResolveCursorInBuffer
+    ;;; determine if we're on a red or green column
+    ; use columnMaskG to determine where we are
+    lds         colMaskGReg, columnMaskG
+    lds         colMaskRReg, columnMaskR
+    tst         colMaskGReg
+    ; if the 1 is not in columnMaskG, load red
+    breq        MultiplexDisplayLoadRed
+    ; otherwise, load green
+    ldi         yl, low(greenBuffer)
+    ldi         yh, high(greenBuffer)
+    mov         cursorBit, cursorGreen
+    jmp         MultiplexDisplayGetColumn
+  MultiplexDisplayLoadRed:
+    ldi         yl, low(redBuffer)
+    ldi         yh, high(redBuffer)
+    mov         cursorBit, cursorRed
 
-  LoadRedBuffer:
-    ; load red buffer
-    ldi yl, low(redBuffer)
-    ldi yh, high(redBuffer)
-
-    ; if currently using cursor color 2...
-    cpi useColor2, TRUE
-    ; load red cursor color 2
-    breq UseCursorRedColor2
-    ; otherwise, load red cursor color 1
-    lds cursorColor, cursorRedColor1
-    jmp ResolveCursorInBuffer
-  UseCursorRedColor2:
-    ; load red cursor color 2
-    lds cursorColor, cursorRedColor2
-    ;jmp ResolveCursorInBuffer
-
-    ;;; figure out if we're at the cursor's column (and thus should load
-    ;;;     the cursor colors)
-  ResolveCursorInBuffer:
+  MultiplexDisplayGetColumn:
+    ;;; get row vector for the column we're on to display
     ; adjust y by offset (so that we're at the right column)
-    add yl, bufferOffset
-    adc yh, zero
+    lds         bufferOffsetReg, ledBufferOffset
+    clr         zero
+    add         yl, bufferOffsetReg
+    adc         yh, zero
+    ; load in column's row vector
+    ld          rowVector, y
 
-    ; if the current column is the cursor's column ...
-    lds temp, cursorColumn
-    cp bufferOffset, temp
-    ld temp, y ; put the column vector in temp
-    brne OutY2C
-    
-    ; prepare for Set/ClearBit function calls
-    ; then set the current column's cursor row bit
-    ; note that r16 (temp) already contains the column vector
-    ; save colMaskG because we need to overwrite for function call
-    push colMaskG
-    lds r17, cursorRow
-    
-    ; and if cursorColor is set ...
-    cpi cursorColor, TRUE
-    brne ClearCursorInBuffer
-    rcall SetBit
-    ; temp[cursorRow] (which contains column vector to output to port c) is 
-    ;   now set
-    ; recover colMaskG
-    pop colMaskG
-    jmp OutY2C
-  ClearCursorInBuffer:
-    rcall ClearBit
-    ; temp[cursorRow] (which contains column vector to output to port c) is 
-    ;   now clear
-    ; recover colMaskG
-    pop colMaskG
-    ;jmp OutY2C
+    ;;; see if we need to adjust rowVector based on cursor
+    ; check if current column is cursor's column
+    lds         cursorColumnReg, cursorColumn
+    cp          cursorColumnReg, bufferOffsetReg
+    ; if it isn't skip the cursor setting logic
+    brne        MultiplexDisplayOutColumn
+    ; otherwise, if it is, set rowVector[cursorRow] = cursorBit
+    lds         cursorRowReg, cursorRow
+    ; rows are indexed backwards on actual display, so compliment base NUM_ROWS
+    ;neg         cursorRowReg
+    ;subi        cursorRowReg, -NUM_ROWS
+    ; shift cursor bit into row position
+    ; r16 (byte): one-hot bit (0b00000001)
+    ; r17 (k): cursorRowReg
+    push        r16
+    ldi         r16, BIT0_MASK
+    push        r17
+    mov         r17, cursorRowReg
+    rcall       lslk
+    ; store result in oneHotBit register (so we can recover r16)
+    mov         oneHotBit, r16
+    pop         r17
+    pop         r16
 
+    ; check if cursorBit is 0
+    tst         cursorBit
+    ; if it isn't, set bit
+    brne        MultiplexDisplaySetCursorBit
+    ; if it is, clear bit
+    com         oneHotBit
+    and         rowVector, oneHotBit
+    jmp         MultiplexDisplayOutColumn
+  MultiplexDisplaySetCursorBit:
+    ; set cursor bit in rowVector
+    or          rowVector, oneHotBit
 
-  OutY2C:
-    ;;; output y (the rows of the current column) to port c
-    out portc, temp
-    
-
-    ;;; adjust cursor vars and re-init if necessary
-    dec changeCounter
-	  sts cursorChangeCounter, changeCounter
-    ; if cursorChangeCounter is at 0 ...
-    cpi changeCounter, 0
-    brne ReInitOffset
-    ; invert useCursorColor2
-    ldi temp, TRUE
-    eor useColor2, temp
-    sts useCursorColor2, useColor2
-    ; reinit cursorChangeCounter
-    ldi changeCounter, CURSOR_COUNTER_INIT
-    sts cursorChangeCounter, changeCounter
+  MultiplexDisplayOutColumn:
+    ; rows on actual display are flipped from the actual
+    ;   indexing, so flip rowVector before outputting
+    flipByte    rowVector
+    out         portc, rowVector
 
 
     ;;; inc led buffer offset (the indexer) and reinit if necessary
-  ReInitOffset:
-    inc bufferOffset
-    ; if bufferOffset doesn't exceed the max column index...
-    cpi bufferOffset, NUM_COLS
-    ; leave the buffer offset incremented
-    brne StoreBufferOffset
+    inc         bufferOffsetReg
+    ; check if bufferOffset exceeds the max column index
+    cpi         bufferOffsetReg, NUM_COLS
+    ; if it doesn't, leave buffer offset incremented
+    brne        MultiplexDisplayStoreBufferOffset
     ; otherwise, reinit the buffer offset
-    ldi bufferOffset, BUFF_OFFSET_INIT
-  StoreBufferOffset:
-    sts ledBufferOffset, bufferOffset
+    ldi         bufferOffsetReg, BUFF_OFFSET_INIT
+  MultiplexDisplayStoreBufferOffset:
+    sts         ledBufferOffset, bufferOffsetReg
 
 
     ;;; output column masks to their respective ports
     ; green -> port a
-    out porta, colMaskG
+    out         porta, colMaskGReg
     ; red -> port d
-    out portd, colMaskR
+    out         portd, colMaskRReg
 
     ;;; rotate column masks
     ; if green column mask is in its final state...
-    cpi colMaskG, COL_MASK_G_FINAL
-    brne RotateColumnMasks
+    cpi         colMaskGReg, COL_MASK_G_FINAL
+    brne        MultiplexDisplayRotateColumnMasks
     ; and if red column mask is in its final state...
-    cpi colMaskR, COL_MASK_R_FINAL
-    brne RotateColumnMasks
+    cpi         colMaskRReg, COL_MASK_R_FINAL
+    brne        MultiplexDisplayRotateColumnMasks
     ; then reinit the column masks
-    ldi colMaskG, COL_MASK_G_INIT
-    ldi colMaskR, COL_MASK_R_INIT
-    jmp StoreColumnMasks
+    ldi         colMaskGReg, COL_MASK_G_INIT
+    ldi         colMaskRReg, COL_MASK_R_INIT
+    jmp         MultiplexDisplayStoreColumnMasks
 
-  RotateColumnMasks:
-    lsr colMaskG
-    rol colMaskR
+  MultiplexDisplayRotateColumnMasks:
+    lsr         colMaskGReg
+    rol         colMaskRReg
 
-  StoreColumnMasks:
-    sts columnMaskG, colMaskG
-    sts columnMaskR, colMaskR
+  MultiplexDisplayStoreColumnMasks:
+    sts         columnMaskG, colMaskGReg
+    sts         columnMaskR, colMaskRReg
 
 
-    pop yh
-    pop yl
-    pop zero
-    pop cursorColor
-    pop changeCounter
-    pop useColor2
-    pop bufferOffset
-    pop colMaskR
-    pop colMaskG
-    pop temp
+    pop        yh
+    pop        yl
+    pop        r21
+    pop        r20
+    pop        r19
+    pop        r18
+    pop        r17
+    pop        r16
 
     ret
 
@@ -1093,6 +1030,14 @@ MultiplexDisplay:
 ; -------------
 ; None
 PlotImage:
+    push    r16
+    push    r17
+    push    r18
+    push    xl
+    push    xh
+    push    yl
+    push    yh
+
     ;;; arguments
     ; arguments pushed out of convenience to caller
     ; ptr = z
@@ -1103,33 +1048,26 @@ PlotImage:
     ;;; other registers needed
     ; loop var
     .def    n = r16
-    push    n
     clr     n
 
     ; number of times to loop register
     .def    numLoops = r17
-    push    numLoops
     ldi     numLoops, NUM_COLS
     ; NUM_COLS * 2
     lsl     numLoops
 
     ; current column
     .def    currentCol = r18
-    push    currentCol
 
     ; redBuffer pointer
     ; commented out since we're gonna actually use "x"
     ; .def    redBufferPointer = x
-    push    xl
-    push    xh
     ldi     xl, low(redBuffer)
     ldi     xh, high(redBuffer)
 
     ; greenBuffer pointer
     ; commented out since we're gonna actually use "y"
     ; .def    greenBufferPointer = y
-    push    yl
-    push    yh
     ldi     yl, low(greenBuffer)
     ldi     yh, high(greenBuffer)
 
@@ -1141,6 +1079,8 @@ PlotImage:
 
     ;;; get the column we want
     lpm     currentCol, z+
+    ;;; flip it (because row indices are flipped on display)
+    flipByte  currentCol
 
     ;;; check parity of n
     bst     n, 0
@@ -1165,9 +1105,9 @@ PlotImage:
     pop     yl
     pop     xh
     pop     xl
-    pop     currentCol
-    pop     numLoops
-    pop     n
+    pop     r18
+    pop     r17
+    pop     r16
     pop     zh
     pop     zl
     ret
