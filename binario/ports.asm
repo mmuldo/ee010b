@@ -153,6 +153,14 @@ InitSwitchPort:
 ; ---------------
 ; None
 ;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 1 byte
+;
 ; Limitations
 ; -----------
 ; None
@@ -228,6 +236,14 @@ InitDisplayPorts:
 ; Data Structures
 ; ---------------
 ; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack depth
+; -----------
+; 0 bytes
 ;
 ; Limitations
 ; -----------

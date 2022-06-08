@@ -20,6 +20,7 @@
 ;       * RotatePixelColor(row, column): rotates the current pixel color
 ;           based on ColorRotation
 ;
+;
 ; Inputs
 ; ------
 ; TODO: ask
@@ -33,6 +34,19 @@
 ; TODO: ask
 ; 8 x 8 LED grid, where each pixel contains a red LED and a green LED
 ; up/down and left/right rotary encoders
+;
+; Data Memory
+; -----------
+; topOfStack: initial location of stack pointer; defines the stack depth, so
+;   must be the first item in dseg
+; gameBoard: NUM_ROWS x NUM_COLS boolean matrix where each element indicates
+;   if that pixel in the LED grid belongs to the game board
+; solution: NUM_ROWS x NUM_COLS boolean matrix that holds the solution of the
+;   current game; a bit value of 1 indicates the pixel should be red while
+;   a bit value of 0 indicates the pixel should be green
+; gameNumber: the # game currently shown; starts at 0
+; state: the current state of the main loop; one of STATE_INTRO, STATE_SELECT,
+;   STATE_PLAY, STATE_WIN
 ;
 ; Error Handling
 ; --------------
@@ -53,14 +67,395 @@
 ; 06/01/2022    Matt Muldowney      cursor movement functions
 ; 06/01/2022    Matt Muldowney      cursor color functions
 
+
+;set the device
+.device ATMEGA64
+
+; chip definitions
+.include  "m64def.inc"
+
+; local include files
+.include "timers.inc"
+.include "ports.inc"
+.include "switches.inc"
+.include "util.inc"
+.include "display.inc"
+.include "serial.inc"
+.include "sound.inc"
+.include "binario.inc"
+
+
 .dseg
-    ; 8 x 8-bit boolean matrix where each element indicates if 
-    ;   that pixel on the LED grid belongs to the game board
-    gameBoard:  .byte 8
+                .byte STACK_DEPTH
+    TopOfStack:	.byte 1
+
+    gameBoard:  .byte NUM_COLS
+    solution:   .byte NUM_COLS
+    gameNumber: .byte 1
+    state:      .byte 1
 
 
 
 .cseg
+
+;setup the vector area
+
+.org    $0000
+
+        JMP     Main                    ;reset vector
+        JMP     PC                      ;external interrupt 0
+        JMP     PC                      ;external interrupt 1
+        JMP     PC                      ;external interrupt 2
+        JMP     PC                      ;external interrupt 3
+        JMP     PC                      ;external interrupt 4
+        JMP     PC                      ;external interrupt 5
+        JMP     PC                      ;external interrupt 6
+        JMP     PC                      ;external interrupt 7
+        JMP     PC                      ;timer 2 compare match
+        JMP     PC                      ;timer 2 overflow
+        JMP     PC                      ;timer 1 capture
+        JMP     PC                      ;timer 1 compare match A
+        JMP     PC                      ;timer 1 compare match B
+        JMP     PC                      ;timer 1 overflow
+        JMP     Timer0EventHandler      ;timer 0 compare match
+        JMP     PC                      ;timer 0 overflow
+        JMP     PC                      ;SPI transfer complete
+        JMP     PC                      ;UART 0 Rx complete
+        JMP     PC                      ;UART 0 Tx empty
+        JMP     PC                      ;UART 0 Tx complete
+        JMP     PC                      ;ADC conversion complete
+        JMP     PC                      ;EEPROM ready
+        JMP     PC                      ;analog comparator
+        JMP     PC                      ;timer 1 compare match C
+        JMP     PC                      ;timer 3 capture
+        JMP     PC                      ;timer 3 compare match A
+        JMP     PC                      ;timer 3 compare match B
+        JMP     PC                      ;timer 3 compare match C
+        JMP     PC                      ;timer 3 overflow
+        JMP     PC                      ;UART 1 Rx complete
+        JMP     PC                      ;UART 1 Tx empty
+        JMP     PC                      ;UART 1 Tx complete
+        JMP     PC                      ;Two-wire serial interface
+        JMP     PC                      ;store program memory ready
+
+
+; maps a state index (STATE_INTRO, STATE_SELECT, STATE_PLAY, STATE_WIN) to a
+; state function handler
+MainLoopTab:
+    .dw     StateIntro
+    .dw     StateSelect
+    .dw     StatePlay
+    .dw     StateWin
+
+
+; converts an action ()
+ActionToDir:
+    .db 0, 0, 0, LEFT, RIGHT, UP, DOWN
+
+
+; TODO: document
+Main:
+    ; initialize stack pointer
+    ldi     r16, low(topOfStack)
+    out     spl, r16
+    ldi     r16, high(topOfStack)
+    out     sph, r16
+
+    ; initialize the game components
+    rcall   InitEverything
+
+
+MainLoop:
+    ; argument to state function (initialize to NO_ACTION)
+    .def    stateArg = r16
+    ldi     stateArg, NO_ACTION
+
+    ; current state main loop is in
+    .def    stateReg = r17
+    lds     stateReg, state
+
+    ; just holds 0 (for 16-bit, 8-bit addition)
+    .def    zero = r18
+    clr     zero
+
+    ;;; check listeners for switch presses/rotations
+    ;;; if a listener returns true, set the stateArg accordingly
+    rcall   LRSwitch
+    brne    MainLoopCheckUDSwitch
+    ldi     stateArg, LR_SWITCH
+  MainLoopCheckUDSwitch:
+    rcall   UDSwitch
+    brne    MainLoopCheckLeftRot
+    ldi     stateArg, UD_SWITCH
+  MainLoopCheckLeftRot:
+    rcall   LeftRot
+    brne    MainLoopCheckRightRot
+    ldi     stateArg, LEFT_ROT
+  MainLoopCheckRightRot:
+    rcall   RightRot
+    brne    MainLoopCheckUpRot
+    ldi     stateArg, RIGHT_ROT
+  MainLoopCheckUpRot:
+    rcall   UpRot
+    brne    MainLoopCheckDownRot
+    ldi     stateArg, UP_ROT
+  MainLoopCheckDownRot:
+    rcall   DownRot
+    brne    MainLoopCallStateFunction
+    ldi     stateArg, DOWN_ROT
+
+
+  MainLoopCallStateFunction:
+    ; point z at MainLoopTab
+    ldi     zl, low(2*MainLoopTab)
+    ldi     zh, high(2*MainLoopTab)
+
+    ; just in case state is out of range, put it back in range
+    rotateOutOfBounds   stateReg, STATE_INTRO, STATE_WIN
+    sts     state, stateReg
+
+    ; offset MainLoopTab pointer by state
+    ; since word addressed, have to multiply state by 2 (i.e. lsl)
+    lsl     stateReg
+    add     zl, stateReg
+    adc     zh, zero
+
+    ; call state function (note that argument already loaded into r16)
+    lpm     r0, z+
+    lpm     r1, z
+    movw    z, r1:r0
+    icall
+    
+    ; reloop
+    rjmp    MainLoop
+
+
+
+StateIntro:
+    ;;; go to game select state
+    ldi     r16, STATE_SELECT
+    sts     state, r16
+
+    ;;; initial game board load from eerom
+    loadGameNumber
+    ret
+
+
+
+; StateSelect(stateArg)
+; =====================
+;
+; Description
+; -----------
+; Handler for when main loop is in STATE_SELECT state, i.e. the state
+; in which the user is selecting a game board to play. The user can
+; rotate the Up/Down rotary encoder to flip between games and then
+; select a game by pressing the Up/Down switch.
+; StateSelect deduces what to do based on the passed in stateArg (r16),
+; which can be NO_ACTION, UP_ROT, DOWN_ROT, or UD_SWITCH.
+;
+; Operational Description
+; -----------------------
+; Here is the mapping from stateArg (r16) to action:
+;   NO_ACTION --> return without doing anything
+;   UP_ROT    --> increment gameNumber mod NUM_GAMES
+;   DOWN_ROT  --> decrement gameNumber mod NUM_GAMES
+;   UD_SWITCH --> set state = STATE_PLAY
+;
+; Arguments
+; ---------
+; stateArg (int, r16): indicates the action that took place during the
+;   previous loop of main
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; r0, r1, r16, r17, r18
+;
+; Stack Depth
+; -----------
+; 19 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+StateSelect:
+    ;;; arguments
+    ; indicates action that just took place (e.g. up rotation, lr switch press,
+    ;   etc.)
+    .def    stateArg = r16
+
+    ; for loading current game #
+    .def    gameNumberReg = r17
+    lds     gameNumberReg, gameNumber
+
+    ; for multiplying gameNumber to compute eerom address
+    .def    gameSpaceReg = r18
+    ldi     gameSpaceReg, GAME_SPACE
+
+    ; check for no action
+    cpi     stateArg, NO_ACTION
+    ; if no action, return without doing anything
+    breq    StateSelectReturn
+
+    ; check for up rotation
+    cpi     stateArg, UP_ROT
+    ; if no up rotation, check down rotation
+    brne    StateSelectCheckDownRot
+    ; if up rotation, gameNumberReg++
+    inc     gameNumberReg
+    ; goto game load
+    rjmp    StateSelectLoadGame
+
+  StateSelectCheckDownRot:
+    ; check for down rotation
+    cpi     stateArg, DOWN_ROT
+    ; if no down rotation, check ud switch press
+    brne    StateSelectCheckUDSwitch
+    ; if down rotation, gameNumberReg--
+    dec     gameNumberReg
+    ; goto game load
+    ;rjmp    StateSelectLoadGame
+
+  StateSelectLoadGame:
+    ; gameNumber % NUM_GAMES
+    rotateOutOfBounds   gameNumberReg, 0, NUM_GAMES-1
+    ; store new game number value back in data memory
+    sts     gameNumber, gameNumberReg
+
+    ; load the game stored at the index gameNumber in eerom
+    loadGameNumber
+
+    ; and done
+    rjmp    StateSelectReturn
+
+
+  StateSelectCheckUDSwitch:
+    ; check for ud switch press
+    cpi     stateArg, UD_SWITCH
+    ; if no switch press, nothing to do
+    brne    StateSelectReturn
+    ; if switch press, user has selected this game, so goto play game state
+    ldi     r16, STATE_PLAY
+    sts     state, r16
+    ; and done
+
+  StateSelectReturn:
+    ret
+
+
+
+    
+
+StatePlay:
+    ;;; arguments
+    ; action on previous loop of main
+    .def    stateArg = r16
+
+    ;;; other registers needed
+    ; holds 0 (for 16-bit, 8-bit addition)
+    .def    zero = r17
+
+    ;;; check if nothing happened
+    cpi     stateArg, NO_ACTION
+    ; if nothing happened, just return
+    breq    StatePlayReturn
+
+
+    ;;; check if lr switch pressed
+    cpi     stateArg, LR_SWITCH
+    ; if lr switch not pressed, check ud switch
+    brne    StatePlayCheckUDSwitch
+    ; if lr switch pressed, rotate color at the current cursor position
+    lds     r16, cursorRow
+    lds     r17, cursorColumn
+    rcall   RotatePixelColor
+    ; and done
+    rjmp    StatePlayReturn
+
+
+  StatePlayCheckUDSwitch:
+    ;;; check if ud switch pressed
+    cpi     stateArg, UD_SWITCH
+    ; if ud switch not pressed, then the action must have been to move
+    ;   the cursor
+    brne    StatePlayMoveCursor
+    ; if ud switch pressed, reset game by loading the current game
+    ;   at index gameNumber in eerom
+    rcall   ClearDisplay
+    loadGameNumber
+    ; and done
+    rjmp    StatePlayReturn
+
+
+  StatePlayMoveCursor:
+    ;;; if we've reached this point, the action must have been a turn of
+    ;;;   the rotary encoders, so move cursor according to the turn
+    ; load ActionToDir table
+    ldi     zl, low(2 * ActionToDir)
+    ldi     zh, high(2 * ActionToDir)
+    ; stateArg (which indicates action) is the offset
+    clr     zero
+    add     zl, stateArg
+    adc     zh, zero
+    ; load the direction to move cursor
+    lpm     r16, z
+    ; MoveCursor(ActionToDir[stateArg])
+    rcall   MoveCursor
+    ; and done
+
+
+  StatePlayReturn:
+    ret
+
+
+StateWin:
+    ret
+
+
 
 ; converts a direction (UP, LEFT, DOWN, RIGHT) to a 
 ; coordinate vector to add to (cursorRow, cursorColumn)
@@ -79,30 +474,32 @@ ColorRotation:
     .db RED, GREEN, OFF, YELLOW
 
 
-; GetColor(row, column)
+; InitEverything
+; ==============
 ;
 ; Description
 ; -----------
-; Gets the current pixel color at (row, column).
-; row argument is passed in on r16, column on r17.
-; color returned on r18.
-; The integer-to-color mapping is determined by OFF, RED, GREEN,
-; and YELLOW constants defined in display.inc.
+; Initializes everything for the binario game, including:
+;   * binario game vars, etc.
+;   * switches and rotary encoders
+;   * LED display
+;   * speaker
+;   * serial i/o
+;   * i/o ports
+;   * timers
+; Also turns on interrupts.
 ;
 ; Operational Description
 ; -----------------------
-; Reads redBuffer to determine if the red LED at (row, column)
-; is on, and likewise for greenBuffer. The color at (row, column)
-; is equal to {red is on} + {green is on}.
+; Calls various init functions.
 ;
 ; Arguments
 ; ---------
-; row (int, r16): row on grid
-; column (int, r17): column on grid
+; None
 ;
 ; Return Values
 ; -------------
-; int, r18: color1
+; None
 ;
 ; Global Variables
 ; ----------------
@@ -110,8 +507,7 @@ ColorRotation:
 ;
 ; Shared Variables
 ; ----------------
-; redBuffer: R
-; greenBuffer: R
+; None
 ;
 ; Local Variables
 ; ---------------
@@ -127,7 +523,7 @@ ColorRotation:
 ;
 ; Error Handling
 ; --------------
-; None (assumes caller will handle (row, column) beint out of bounds)
+; None
 ;
 ; Algorithms
 ; ----------
@@ -139,11 +535,463 @@ ColorRotation:
 ;
 ; Registers Used
 ; --------------
-; r18 (r16 and r17 preserved)
+; r16, r17
 ;
 ; Stack Depth
 ; -----------
-; 6 bytes
+; 10 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+InitEverything:
+    ; initialize binario vars
+    rcall   InitBinarioVars
+
+    ; initialize switches/rotary encoders
+    rcall   InitSwitchPort
+    rcall   InitSwitchVars
+
+    ; initialize display
+    rcall   InitDisplayPorts
+    rcall   InitDisplayVars
+
+    ; initialize sound
+    rcall   InitSoundPort
+    ; initialize speaker by playing 0 Hz frequency
+    clr     r17
+    clr     r16
+    rcall   PlayNote
+
+    ; initialize serio io
+    rcall   InitSerialIO
+
+
+    ; initialize timers
+    rcall   InitTimer0
+    rcall   InitTimer1
+
+    ; turn on interrupts
+    sei
+
+    ; all ready to go!
+    ret
+
+
+; InitBinarioVars
+; ===============
+;
+; Description
+; -----------
+; Initializes shared vars for the binario game.
+;
+; Operational Description
+; -----------------------
+; Sets shared vars for the binario game to their initial value.
+; For gameBoard, sets each column to FALSE.
+;
+; Arguments
+; ---------
+; None
+;
+; Return Values
+; -------------
+; None
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; falseReg: holds false
+; idx: loop index for clearing game board
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; None
+;
+; Stack Depth
+; -----------
+; 4 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+InitBinarioVars:
+    push  r16
+    push  r17
+    push  yl
+    push  yh
+
+    ; for holding FALSE
+    .def    falseReg = r16
+    ; for holding GAME_NUMBER_INIT
+    ; reuse r16 b/c don't need at same time as falseReg
+    .def    gameNumberInitReg = r16
+    ; for holding STATE_INIT
+    ; reuse r16 b/c don't need at same time as gameNumberInitReg
+    .def    stateInitReg = r16
+
+    ; loop index
+    .def    idx = r17
+
+
+    ;;; intialize game board to all FALSE, such that the game board
+    ;;;   doesn't initially reserve any pixels
+    ldi     falseReg, FALSE
+    ldi     idx, NUM_COLS
+  InitBinarioVarsClearGameBoardLoop:
+    st      y+, falseReg
+    dec     idx
+    brne    InitBinarioVarsClearGameBoardLoop
+
+
+    ;;; initialize first game stored in eerom to display
+    ldi     gameNumberInitReg, GAME_NUMBER_INIT
+    sts     gameNumber, gameNumberInitReg
+
+
+    ;;; initialize initial game state
+    ldi     stateInitReg, STATE_INIT
+    sts     state, stateInitReg
+
+    pop     yh
+    pop     yl
+    pop     r17
+    pop     r16
+    ret
+
+
+
+; LoadGameFromEEROM(addr)
+; ==============================
+;
+; Description
+; -----------
+; Plots pixels on the LED display according to data stored at EEROM addr (r17).
+; It is assumed that, at addr, the first 8 bytes correspond to the game's
+; solution and the next 8 bytes correspond to the fixed positions.
+; For the solution bytes, a bit value of 1 indicates that pixel is red, while a
+; bit value of 0 indicates that pixel is green.
+; For the fixed positions, a bit value of 1 indicates that pixel is reserved by
+; the game board, while a bit value of 0 indicates that pixel can be changed by
+; the user (thus, the fixed position bytes are loaded directly into gameBoard).
+;
+; Operational Description
+; -----------------------
+; Reads eerom[addr] into solution and eerom[addr+NUM_COLS] into gameBoard.
+; Then, loops the following NUM_COLS times:
+;   * redBuffer[col] = solution[col] && gameBoard[col]
+;   * greenBuffer[col] = !solution[addr] && gameBoard[col]
+;
+; Arguments
+; ---------
+; addr: byte address in EEROM
+;
+; Return Values
+; -------------
+; none
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer: W
+; greenBuffer: W
+; gameBoard: W
+; solution: W
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None (ReadEEROM handles bad addr argument)
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; [unknown]
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+LoadGameFromEEROM:
+    push    r16
+    push    r18
+    push    r19
+    push    xl
+    push    xh
+    push    yl
+    push    yh
+    push    zl
+    push    zh
+
+    ;;; arguments
+    .def    addr = r17
+
+    ;;; other registers needed
+    ; holds NUM_COLS
+    .def    numColsReg = r16
+
+    ; current solution column
+    .def    solutionColumn = r18
+    ; current gameBoard column
+    ; reuse r18 since we don't need at same time as solution
+    .def    gameBoardColumn = r18
+
+    ; the current redBuffer column
+    .def    redColumn = r19
+    ; the current greenBuffer column
+    ; reuse r19 since we don't need at same time as redColumn
+    .def    greenColumn = r19
+
+    ;;; read NUM_COLS bytes from eerom[addr] into solution
+    ldi     r16, NUM_COLS
+    ; r17 already contains eerom addr
+    ldi     yl, low(solution)
+    ldi     yh, high(solution)
+    ; ReadEEROM(NUM_COLS, addr, solution)
+    rcall   ReadEEROM
+
+    ;;; read NUM_COLS bytes from eerom[addr+NUM_COLS] into gameBoard
+    subi    addr, -NUM_COLS
+    ldi     yl, low(gameBoard)
+    ldi     yh, high(gameBoard)
+    ; ReadEEROM(NUM_COLS, addr + NUM_COLS, gameBoard)
+    rcall   ReadEEROM
+
+
+    ;;; load up redBuffer and greenBuffer
+    ; in this first loop, we load red/greenBuffer according to solution
+
+    ; x will point to solution
+    ldi     xl, low(solution)
+    ldi     xh, high(solution)
+
+    ; y will point to redBuffer 
+    ldi     yl, low(redBuffer)
+    ldi     yh, high(redBuffer)
+
+    ; z will point to green buffer
+    ldi     zl, low(greenBuffer)
+    ldi     zh, high(greenBuffer)
+
+  LoadGameFromEEROMSolutionLoop:
+    ; get current solution column
+    ld      solutionColumn, x+
+
+    ; redBuffer[col] = solution[col]
+    st      y+, solutionColumn
+
+    ; greenBuffer[col] = !solution[col]
+    com     solutionColumn
+    st      z+, solutionColumn
+
+    ; numColsReg is our indexer (initialized to NUM_COLS)
+    dec     numColsReg
+    ; when it hits 0, we're done
+    brne    LoadGameFromEEROMSolutionLoop
+
+
+    ; in this second loop, we and red/greenBuffer with gameBoard to
+    ;   just get the pixels that are reserved by the gameBoard
+
+    ; x will point to gameBoard
+    ldi     xl, low(gameBoard)
+    ldi     xh, high(gameBoard)
+
+    ; y will point to redBuffer 
+    ldi     yl, low(redBuffer)
+    ldi     yh, high(redBuffer)
+
+    ; z will point to green buffer
+    ldi     zl, low(greenBuffer)
+    ldi     zh, high(greenBuffer)
+
+    ; reinitialize numColsReg (our indexer)
+    ldi     numColsReg, NUM_COLS
+  LoadGameFromEEROMGameBoardLoop:
+    ; get current col of game board
+    ld      gameBoardColumn, x+
+
+    ; get current col of redBuffer
+    ld      redColumn, y
+
+    ; mask off game board bits
+    and     redColumn, gameBoardColumn
+  
+    ; store back in redBuffer
+    st      y+, redColumn
+
+    ; get current col of greenBuffer
+    ld      greenColumn, z
+
+    ; mask off game board bits
+    and     greenColumn, gameBoardColumn
+  
+    ; store back in redBuffer
+    st      z+, greenColumn
+
+    ; numColsReg is our indexer (initialized to NUM_COLS)
+    dec     numColsReg
+    ; when it hits 0, we're done
+    brne    LoadGameFromEEROMGameBoardLoop
+    
+
+    ;;; all done, so return
+  LoadGameFromEEROMReturn:
+    pop     zh
+    pop     zl
+    pop     yh
+    pop     yl
+    pop     xh
+    pop     xl
+    pop     r19
+    pop     r18
+    pop     r16
+    ret
+
+
+; GetColor(row, column)
+; =====================
+;
+; Description
+; -----------
+; Gets the current pixel color at (row, column).
+; row argument is passed in on r16, column on r17.
+; color returned on r18.
+; The integer-to-color mapping is determined by OFF, RED, GREEN,
+; and YELLOW constants defined in display.inc.
+;
+; Operational Description
+; -----------------------
+; The color mapping has been setup in a way such that the bit 0
+; of the color indicates if the red LED should be on, and bit 1
+; of the color indicates if the green LED should be on.
+; So, we simply set color[0] = redBuffer[row, column], and
+; color[1] = greenBuffer[row, column].
+;
+; Arguments
+; ---------
+; row (int, r16): row on grid
+; column (int, r17): column on grid
+;
+; Return Values
+; -------------
+; int, r18: color
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer: R
+; greenBuffer: R
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None (assumes caller will handle (row, column) being out of bounds)
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; r18
+;
+; Stack Depth
+; -----------
+; 5 bytes
 ;
 ; Limitations
 ; -----------
@@ -158,79 +1006,27 @@ ColorRotation:
 ; None
 GetColor:
     ;;; arguments
-    ; arguments pushed for convenience to caller
     .def    row = r16
-    push    row
     .def    column = r17
-    push    column
 
     ;;; return values
     .def    color = r18
-
-    ;;; other registers needed
-    ; general purpose register
-    .def    tmp = r20
-    push    r20
-
-    ; need to overwrite column, so save it in here
-    .def    columnTmp = r21
-    push    columnTmp
-    mov     columnTmp, column
-
-    ; needed for buffer access
-    push    yl
-    push    yh
+    clr     color
 
 
     ;;; get the current pixel color at (row, column)
-    ; number of times to shift for lsrk
-    .def    k = r17
-    mov     k, row
-
-    ; byte input for lsrk
-    .def    byte = r16
-
-    ; first get redBuffer[column]
-    ldi     yl, low(redBuffer)
-    ldi     yh, high(redBuffer)
-    add     yl, columnTmp
-    adc     yh, zero
-
-    ; then get color = redBuffer[column][row]
-    ld      byte, y
-    push    k ; save k
-    ; byte >> k (puts redBuffer[column][row] in lowest bit of byte)
-    rcall   lsrk
-    pop     k ; recover k
-    ; put {red is on} in color
-    bst     byte, 0
+    ; put redBuffer[row, column] in t flag
+    buffElementToT  redBuffer, row, column
+    ; load it into color[0]
     bld     color, 0
 
-    ; second get greenBuffer[column]
-    ldi     yl, low(greenBuffer)
-    ldi     yh, high(greenBuffer)
-    add     yl, columnTmp
-    adc     yh, zero
-
-    ; then get color += greenBuffer[column][row]
-    ld      byte, y
-    push    k ; save k
-    ; byte >> k (puts greenBuffer[column][row] in lowest bit of byte)
-    rcall   lsrk
-    pop     k ; recover k
-    ; put {green is on} in tmp an add to color
-    bst     byte, 0
-    bld     tmp, 0
-    add     color, tmp
+    ; put greenBuffer[row, column] in t flag
+    buffElementToT  greenBuffer, row, column
+    ; load it into color[1]
+    bld     color, 1
     ; color now contains current color at (row, column)
 
     ; return
-    pop     yh
-    pop     yl
-    pop     columnTmp
-    pop     tmp
-    pop     column
-    pop     row
     ret
 
 
@@ -295,7 +1091,7 @@ GetColor:
 ;
 ; Registers Used
 ; --------------
-; none (r16 and r17 preserved)
+; none
 ;
 ; Stack Depth
 ; -----------
@@ -314,39 +1110,11 @@ GetColor:
 ; None
 PixelReserved:
     ;;; arguments
-    ; arguments pushed out of convenience to caller
     .def    row = r16
-    push    row
     .def    column = r17
-    push    column
 
-    ; need to overwrite column, so save it in here
-    .def    columnTmp = r18
-    push    columnTmp
-    mov     columnTmp, column
-
-    ; needed for buffer access
-    push    yl
-    push    yh
-
-    ;;; stuff for lsrk
-    ; number of times to shift for lsrk
-    .def    k = r17
-    mov     k, row
-    ; byte input for lsrk
-    .def    byte = r16
-
-    ;;; check if current pixel belongs to game board
-    ldi     yl, low(gameBoard)
-    ldi     yh, low(gameBoard)
-    add     yl, columnTmp
-    adc     yh, zero
-
-    ; finally, get gameBoard[column]
-    ld      byte, y
-    ; byte >> k (puts gameBoard[column][row] in lowest bit of byte)
-    rcall   lsrk
-    bst     byte, 0
+    ; put gameBoard[row, column] in t flag
+    buffElementToT  gameBoard, row, column
 
     ; t set --> reserved
     brts    PixelReservedReturnTrue
@@ -357,160 +1125,6 @@ PixelReserved:
     sez
 
   PixelReservedReturn:
-    ;;; return
-    pop     yh
-    pop     yl
-    pop     columnTmp
-    pop     column
-    pop     row
-    ret
-
-
-; RowColumnValid(row, column)
-;
-; Description
-; -----------
-; Determines if the (row, column) are valid in the following way:
-;   0 <= row < NUM_ROWS and 0 <= column < NUM_COLS --> valid
-;   otherwise --> not valid
-; If valid, sets zero flag, and clears zero flag otherwise.
-;
-; Operational Description
-; -----------------------
-; Performs CheckValid on each boundary case.
-;
-; Arguments
-; ---------
-; row (int, r16): row
-; column (int, r17): column
-;
-; Return Values
-; -------------
-; Z flag: set if valid, cleared otherwise
-;
-; Global Variables
-; ----------------
-; None
-;
-; Shared Variables
-; ----------------
-; None
-;
-; Local Variables
-; ---------------
-; None
-;
-; Inputs
-; ------
-; None
-;
-; Outputs
-; -------
-; None
-;
-; Error Handling
-; --------------
-; None
-;
-; Algorithms
-; ----------
-; None
-;
-; Data Structures
-; ---------------
-; None
-;
-; Registers Used
-; --------------
-; none (r16, r17 preserved)
-;
-; Stack Depth
-; -----------
-; 3 bytes
-;
-; Limitations
-; -----------
-; None
-;
-; Known Bugs
-; ----------
-; None
-;
-; Special Notes
-; -------------
-; None
-RowColumnValid:
-    ;;; arguments
-    ; push args out of convenience to caller
-    .def    row = r16
-    .def    column = r17
-
-    ;;; check validity of (row, column)
-    ; need these registers
-    .def    value1 = r16
-    .def    value2 = r17
-    .def    validFlag = r18
-    push    validFlag
-
-    ; initialize valid flag to true
-    ldi     validFlag, TRUE
-
-    ; check row >= 0
-    ; save stuff
-    push    value1
-    push    value2
-    ;mov     value1, row
-    clr     value2
-    rcall   CheckValid
-    ; recover stuff
-    pop     value2
-    pop     value1
-
-    ; check NUM_ROWS-1 >= row
-    ; save stuff
-    push    value1
-    push    value2
-    mov     value2, row
-    ldi     value1, NUM_ROWS-1
-    rcall   CheckValid
-    ; recover stuff
-    pop     value2
-    pop     value1
-
-    ; check column >= 0
-    ; save stuff
-    push    value1
-    push    value2
-    mov     value1, column
-    clr     value2
-    rcall   CheckValid
-    ; recover stuff
-    pop     value2
-    pop     value1
-
-    ; check NUM_COLS-1 >= column
-    ; save stuff
-    push    value1
-    push    value2
-    ;mov     value2, column
-    ldi     value1, NUM_COLS-1
-    rcall   CheckValid
-    ; recover stuff
-    pop     value2
-    pop     value1
-
-    ;;; check valid flag
-    cpi     validFlag, True
-    ; if valid, set z flag
-    breq    RowColumnValidSetZ
-    ; if not valid, clear z flag
-    clz
-    jmp     RowColumnValidReturn
-  RowColumnValidSetZ:
-    sez
-
-  RowColumnValidReturn:
-    pop     validFlag
     ret
 
 
@@ -592,7 +1206,7 @@ RowColumnValid:
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 5 bytes
 ;
 ; Limitations
 ; -----------
@@ -614,25 +1228,16 @@ GetCursorColors:
     .def    color1 = r18
     .def    color2 = r19
 
-    ;;; other registers needed
-    ; general purpose register
-    .def    tmp = r20
-    push    r20
-
-    ; need to overwrite column, so save it in here
-    .def    columnTmp = r21
-    push    columnTmp
-    mov     columnTmp, column
-
-
     ;;; check validity of (row, column)
-    rcall   RowColumnValid
-    ; if valid, goto function body
-    breq    GetCursorColorsBody
-    ; otherwise, load OFF into color1 and color2 and return
-    ldi     color1, OFF
-    ldi     color2, OFF
-    jmp     GetCursorColorsReturn
+    ; 0 <= row <= NUM_ROWS - 1
+    withinBounds    row, 0, NUM_ROWS
+    ; if not within bounds, return without doing anything
+    ; 0 <= column <= NUM_COLS - 1
+    brtc    GetCursorColorsReturn
+    ; 0 <= col <= NUM_COLS - 1
+    withinBounds    column, 0, NUM_COLS
+    ; if not within bounds, return without doing anything
+    brtc    GetCursorColorsReturn
 
     
   GetCursorColorsBody:
@@ -641,12 +1246,11 @@ GetCursorColors:
     rcall   GetColor
     ; color1 now contains current color at (row, column)
 
-
     ;;; check if current pixel belongs to game board
     ; already have r16 = row, r17 = column for args
     rcall   PixelReserved
     ; z clear --> pixel not reserved by game board
-    breq    GetCursorColorsNotReserved
+    brne    GetCursorColorsNotReserved
     ; z set --> belongs to game board, so set color2 to yellow
     ldi     color2, YELLOW
     ; and done
@@ -668,11 +1272,8 @@ GetCursorColors:
     ldi     color1, RED
     ldi     color2, GREEN
     ; and done
-    ;jmp     GetCursorColorsReturn
 
   GetCursorColorsReturn:
-    pop     columnTmp
-    pop     tmp
     ret
 
 
@@ -683,10 +1284,11 @@ GetCursorColors:
 ; Description
 ; -----------
 ; Moves the cursor in the specified dir (passed on r16); dir can be
-;   0 -> up
-;   1 -> left
-;   2 -> down
-;   3 -> right
+;   UP -> up
+;   LEFT -> left
+;   DOWN -> down
+;   RIGHT -> right
+; See binario.inc for values of consts.
 ; If cursor is against one of the edges on the display, wraps cursor
 ; around to the other side; e.g. if the cursor is at (3, 7) and
 ; we want to move the cursor right, the curosr will now be at (3, 0)
@@ -704,10 +1306,10 @@ GetCursorColors:
 ; Arguments
 ; ---------
 ; dir (int, r16): direction in which to move cursor
-;   0 --> up
-;   1 --> left
-;   2 --> down
-;   3 --> right
+;   UP --> up
+;   LEFT --> left
+;   DOWN --> down
+;   RIGHT --> right
 ;
 ; Return Values
 ; -------------
@@ -767,77 +1369,55 @@ GetCursorColors:
 ; -------------
 ; None
 MoveCursor:
+    push    r16
+    push    r17
+    push    r18
+    push    r19
+    push    r20
+    push    r21
+    push    r22
+    push    r23
+    push    zl
+    push    zh
+
     ;;; arguments
     ; direction to move cursor
     .def    dir = r16
-    push    dir
 
     ;;; other registers needed
     ; row to move cursor
-    ; already pushed when we pushed dir
     .def    row = r16
-
     ; column to move cursor
     .def    column = r17
-    push    column
-
     ; color1 of new cursor
     .def    color1 = r18
-    push    color1
-
     ; color2 of new cursor
     .def    color2 = r19
-    push    color2
 
     ; zero (for adc)
     .def    zero = r20
-    push    zero
     clr     zero
 
     ; general purpose
     .def    tmp = r21
-    push    tmp
 
-    ; for loading from program memory
-    push    zl
-    push    zh
+    ; loop var for performing same logic on row, column adjustment
+    .def    loopVar = r22
+
+    ; for adjusting row and column
+    .def    adjustParam = r23
 
     ;;; check validity of dir
-    .def    value1 = r16
-    .def    value2 = r17
-    .def    validFlag = r18
-    push    validFlag
-
-    ; initialize validFlag to TRUE
-    ldi     validFlag, TRUE
-
-    ; check dir >= UP
-    push    value1
-    push    value2
-    ;mov     value1, dir
-    ldi     value2, UP
-    rcall   CheckValid
-    pop     value2
-    pop     value1
-
-    ; check RIGHT >= dir
-    push    value1
-    push    value2
-    mov     value2, dir
-    ldi     value1, RIGHT
-    rcall   CheckValid
-    pop     value2
-    pop     value1
-
-    ; if valid, continue with function body
-    cpi     validFlag, TRUE
-    pop     validFlag
-    breq    MoveCursorBody
-    ; if not valid, just return
+    ; must have UP <= dir <= RIGHT
+    withinBounds  dir, UP, RIGHT
+    ; if condition not satisfied, just return
+    brts    MoveCursorDirToCoords
+    ; the reason why we don't just do a brtc to MoveCursorReturn is because
+    ;   it is out of range
     jmp     MoveCursorReturn
 
 
-  MoveCursorBody:
+  MoveCursorDirToCoords:
     ;;; get coords based on dir
     ; load DirToCoords table ito z
     ldi     zl, low(2 * DirToCoords)
@@ -856,45 +1436,14 @@ MoveCursor:
     lpm     tmp, z
     add     column, tmp
 
+
     ;;; readjust (row, column) if needed
-  ;MoveCursorCheckRowTooLarge:
-    ; check if row exceeds NUM_ROWS
-    cpi     row, NUM_ROWS
-    ; if it's not too large, check if it's too small
-    brlt    MoveCursorCheckRowTooSmall
-    ; if it's too large, set to 0 and check column
-    ldi     row, 0
-    jmp     MoveCursorCheckColumnTooLarge
-
-  MoveCursorCheckRowTooSmall:
-    ; check if row under 0
-    cpi     row, 0
-    ; if it's not too small, check column
-    brge    MoveCursorCheckColumnTooLarge
-    ; if it's too small, set to NUM_ROWS and check column
-    ldi     row, NUM_ROWS
-    ;jmp     MoveCursorCheckColumnTooLarge
-
-  MoveCursorCheckColumnTooLarge:
-    ; check if column exceeds NUM_COLS
-    cpi     column, NUM_COLS
-    ; if it's not too large, check if it's too small
-    brlt    MoveCursorCheckColumnTooSmall
-    ; if it's too large, set to 0 and get colors we want for cursor
-    ldi     column, 0
-    jmp     MoveCursorGetColors
-
-  MoveCursorCheckColumnTooSmall:
-    ; check if column under 0
-    cpi     column, 0
-    ; if it's not too small, check column
-    brge    MoveCursorGetColors
-    ; if it's too small, set to NUM_COLS and get colors we want for cursor
-    ldi     column, NUM_COLS
-    ;jmp     MoveCursorGetColors
+    ; row/col > upper bound --> set to lower bound
+    ; row/col < lower bound --> set to upper bound
+    rotateOutOfBounds   row, 0, NUM_ROWS-1
+    rotateOutOfBounds   column, 0, NUM_COLS-1
 
 
-  MoveCursorGetColors:
     ;;; get the colors for the cursor to blink between
     ; already have r16 = row, r17 = column
     rcall   GetCursorColors
@@ -904,17 +1453,18 @@ MoveCursor:
     ; already have r16 = row, r17 = column, r18 = color1, r19 = color2
     rcall   SetCursor
 
-
   MoveCursorReturn:
     ;;; return
     pop     zh
     pop     zl
-    pop     tmp
-    pop     zero
-    pop     color2
-    pop     color1
-    pop     column
-    pop     dir
+    pop     r23
+    pop     r22
+    pop     r21
+    pop     r20
+    pop     r19
+    pop     r18
+    pop     r17
+    pop     r16
     ret
 
 
@@ -993,14 +1543,16 @@ MoveCursor:
 ; -------------
 ; None
 Beep:
+    push    r16
+    push    r17
+    push    r18
+
     ;;; arguments
     .def    n = r16
-    push    n
 
     ;;; other registers
     ; need this b/c we overwrite n's register
     .def    nCopy = r18
-    push    nCopy
     mov     nCopy, n
 
     ; for PlayNote(BEEP_FREQ)
@@ -1008,7 +1560,7 @@ Beep:
     .def    freqh = r17
 
     ; for Delay10ms(BEEP_LENGTH)
-    .def    delayTimes = r16
+    .def    numDelays = r16
 
   BeepLoop:
     ;;; play beep freq
@@ -1017,7 +1569,16 @@ Beep:
     rcall   PlayNote
 
     ;;; wait
-    ldi     delayTimes, BEEP_LENGTH
+    ldi     numDelays, BEEP_LENGTH
+    rcall   Delay10ms
+
+    ;;; play 0 Hz freq
+    clr     freql
+    clr     freqh
+    rcall   PlayNote
+
+    ;;; wait
+    ldi     numDelays, BEEP_LENGTH
     rcall   Delay10ms
 
     ;;; loop
@@ -1025,8 +1586,9 @@ Beep:
     brne    BeepLoop
 
     ; if n == 0, we're done
-    pop     nCopy
-    pop     n
+    pop     r18
+    pop     r17
+    pop     r16
     ret
 
 
@@ -1111,6 +1673,12 @@ Beep:
 ; -------------
 ; None
 RotatePixelColor:
+    push    r16
+    push    r18
+    push    r19
+    push    zl
+    push    zh
+
     ;;; arguments
     .def    row = r16
     .def    column = r17
@@ -1118,37 +1686,36 @@ RotatePixelColor:
     ;;; other registers needed
     ; color of pixel at (row, column)
     .def    color = r18
-    push    color
 
     ; zero
     .def    zero = r19
-    push    zero
     clr     zero
 
-    ; for color rotation
-    push    zl
-    push    zh
+    ; number of times to beep at user if they attempt to write a reserved space
+    ; reuse r16 b/c we don't need at the same time as row
+    .def    n = r16
 
-    ;;; check validity of arguments
-    ; arguments already r16 = row, r17 = column
-    rcall   RowColumnValid
-    ; if valid, continue with function body
-    breq    RotatePixelColorBody
-    ; if not valid, just return
-    jmp     RotatePixelColorReturn
+    ;;; check validity of (row, column)
+    ; 0 <= row <= NUM_ROWS - 1
+    withinBounds    row, 0, NUM_ROWS
+    ; if not within bounds, return without doing anything
+    ; 0 <= column <= NUM_COLS - 1
+    brtc    RotatePixelColorReturn
+    ; 0 <= col <= NUM_COLS - 1
+    withinBounds    column, 0, NUM_COLS
+    ; if not within bounds, return without doing anything
+    brtc    RotatePixelColorReturn
+    ; otherwise, continue with function body
 
-  RotatePixelColorBody:
+
     ;;; check if pixel is reserved
     ; arguments already r16 = row, r17 = column
     rcall   PixelReserved
     ; if not reserved, continue with pixel color rotation
     brne    RotatePixelColorRotate
     ; if reserved, beep once
-    .def    n = r16
-    push    n
     ldi     n, 1
     rcall   Beep
-    pop     n
     ; and return
     jmp     RotatePixelColorReturn
 
@@ -1160,8 +1727,8 @@ RotatePixelColor:
     ; r18 = color
 
     ; load ColorRotation table ito z
-    ldi     zl, low(2 * DirToCoords)
-    ldi     zh, high(2 * DirToCoords)
+    ldi     zl, low(2 * ColorRotation)
+    ldi     zh, high(2 * ColorRotation)
     ; offset = color
     add     zl, color
     adc     zh, zero
@@ -1182,6 +1749,17 @@ RotatePixelColor:
     ;;; and return
     pop     zh
     pop     zl
-    pop     zero
-    pop     color
+    pop     r19
+    pop     r18
+    pop     r16
     ret
+
+
+; include asm files here (since no linker)
+.include "timers.asm"
+.include "ports.asm"
+.include "switches.asm"
+.include "util.asm"
+.include "display.asm"
+.include "sound.asm"
+.include "serial.asm"

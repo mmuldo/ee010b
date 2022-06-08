@@ -383,8 +383,7 @@ ClearDisplay:
 ;
 ; Local Variables
 ; ---------------
-; offReg: holds OFF
-; yellowReg: holds YELLOW
+; none
 ;
 ; Inputs
 ; ------
@@ -416,7 +415,7 @@ ClearDisplay:
 ;
 ; Stack Depth
 ; -----------
-; 4 bytes
+; 3 bytes
 ;
 ; Limitations
 ; -----------
@@ -430,9 +429,6 @@ ClearDisplay:
 ; -------------
 ; None
 SetCursor:
-    push    r20
-    push    r21
-
     ;;; arguments
     ; row for cursor
     .def    row = r16
@@ -443,21 +439,13 @@ SetCursor:
     ; second color for cursor to blink
     .def    color2 = r19
     
-    ;;; other registers we need
-    ; for withinBounds tests
-    .def    offReg = r20
-    ; for withinBounds tests
-    .def    yellowReg = r21
-
     ;;; argument validity checks
     ; OFF <= color1 <= YELLOW
-    ldi     offReg, OFF
-    ldi     yellowReg, YELLOW
-    withinBounds  color1, offReg, yellowReg
+    withinBounds  color1, OFF, YELLOW
     brtc    SetCursorReturn
 
     ; OFF <= color2 <= YELLOW
-    withinBounds  color2, offReg, yellowReg
+    withinBounds  color2, OFF, YELLOW
     brtc    SetCursorReturn
 
 
@@ -470,9 +458,6 @@ SetCursor:
     sts     cursorColor2, color2
     
   SetCursorReturn:
-    pop     r21
-    pop     r20
-
     ret
 
 
@@ -513,10 +498,6 @@ SetCursor:
 ; Local Variables
 ; ---------------
 ; zero: holds 0
-; numRowsReg: holds NUM_ROWS
-; numColsReg: holds NUM_COLS
-; offReg: holds OFF
-; yellowReg: holds YELLOW
 ; redOn: red on state corresponding to color
 ; greenOn: green on state corresponding to color
 ; ledOn: red/green on state we're currently checking
@@ -554,7 +535,7 @@ SetCursor:
 ;
 ; Stack Depth
 ; -----------
-; 7 bytes
+; 8 bytes
 ;
 ; Limitations
 ; -----------
@@ -585,45 +566,33 @@ PlotPixel:
     .def    color = r18
     
     ;;; other registers needed
-    ; for argument validity checks; zero also used for adding 16-bits to 8-bits
-    .def    zero = r19
-    .def    numRowsReg = r20
-    ; reuse r20 since we don't need numColsRegand and numRowsReg simultaneously
-    .def    numColsReg = r20
-    ; reuse r19 since we don't need offReg and zero simultaneously
-    .def    offReg = r19
-    ; reuse r20 since we don't need yellowReg and numRowsReg simultaneously
-    .def    yellowReg = r20
-
     ; for storing red, green LED on states of color
-    ; reuse r20 since don't need yellowReg when using this
-    .def    redOn = r20
-    .def    greenOn = r21
+    .def    redOn = r19
+    .def    greenOn = r20
     ; for current LED (red/green) we are checking (for loop)
-    .def    ledOn = r22
+    .def    ledOn = r21
 
     ; for updating buffer
-    ; reuse r19 since don't need at same time as 0
-    .def    bufferRowVector = r19
+    .def    bufferRowVector = r22
 
     ; for loop
     .def    loopCounter = r23
 
+    ; for holding zero for adc
+    ; reuse r19 because don't need this at the same time as redOn
+    .def    zero = r19
+    
+
     ;;; check validity of (row,column), return if invalid
     ; must have 0 <= row <= NUM_ROWS
-    clr     zero
-    ldi     numRowsReg, NUM_ROWS
-    withinBounds    row, zero, numRowsReg
+    withinBounds    row, 0, NUM_ROWS
     brtc    PlotPixelReturnDetour
     ; must have 0 <= column <= NUM_COLS
-    ldi     numRowsReg, NUM_ROWS
-    withinBounds    column, zero, numColsReg
+    withinBounds    column, 0, NUM_COLS
     brtc    PlotPixelReturnDetour
 
     ;;; check validity of color, return if invalid
-    ldi     offReg, OFF
-    ldi     yellowReg, YELLOW
-    withinBounds    color, offReg, yellowReg
+    withinBounds    color, OFF, YELLOW
     brtc    PlotPixelReturnDetour
     jmp     PlotPixelGetOnStates
 
@@ -634,7 +603,7 @@ PlotPixel:
 
   PlotPixelGetOnStates:
     ;;; the on states of red, green LEDS
-    colorToRG   color, redOn, greenOn
+    colorToRG   color, greenOn, redOn
 
 
     ;;; loop the following for red and green, since setting 
@@ -890,9 +859,7 @@ MultiplexDisplay:
     setBitToZ   rowVector, cursorRowReg
 
   MultiplexDisplayOutColumn:
-    ; rows on display are flipped from the actual
-    ;   indexing, so flip rowVector before outputting
-    flipByte    rowVector
+    ; output the row vector
     out         portc, rowVector
 
 
@@ -1078,8 +1045,6 @@ PlotImage:
 
     ;;; get the column we want
     lpm     currentCol, z+
-    ;;; flip it (because row indices are flipped on display)
-    flipByte  currentCol
 
     ;;; check parity of n
     bst     n, 0

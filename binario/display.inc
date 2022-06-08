@@ -8,23 +8,24 @@
 ;
 ; Constants
 ; ---------
-; OFF
-; RED
-; GREEN
-; YELLOW
+; OFF: integer enumerator for off
+; RED: integer enumerator for red color
+; GREEN: integer enumerator for green color
+; YELLOW: integer enumarotr for yellow color
 ; PIXEL_OFF (same as OFF)
 ; PIXEL_RED (same as RED)
 ; PIXEL_GREEN (same as GREEN)
 ; PIXEL_YELLOW (same as YELLOW)
-; NUM_ROWS
-; NUM_COLS
-; BUFF_OFFSET_INIT
-; COL_MASK_G_INIT
-; COL_MASK_R_INIT
-; COL_MASK_G_FINAL
-; COL_MASK_R_FINAL
-; CURSOR_COUNTER_INIT
-; USE_CURSOR_COLOR2_INIT
+; NUM_ROWS: number of rows on display
+; NUM_COLS: number of columns on display
+; BUFF_OFFSET_INIT: intial offset from column 0 in buffer
+; COL_MASK_G_INIT: starting state of green column mask
+; COL_MASK_R_INIT: starting state of red column mask
+; COL_MASK_G_FINAL: ending state of green column mask (before repeating cycle)
+; COL_MASK_R_FINAL: ending state of red column mask (before repeating cycle)
+; CURSOR_COUNTER_INIT: initial value to count down from before switching
+;   cursor colors
+; USE_CURSOR_COLOR2_INIT: whether or not we initially want to use cursor color 2
 ; CURSOR_ROW_INIT
 ; CURSOR_COL_INIT
 ; CURSOR_COLOR1_INIT

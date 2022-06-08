@@ -448,3 +448,103 @@ Delay10ms:
     pop     yl
     pop     r16
     ret
+
+
+; RotateOutOfBoundsHelper(num, lower, upper)
+; ==========================================
+;
+; Description
+; -----------
+; Helper function for rotateOutOfBounds macro. If t flag is set, doesn't do
+; anything (just returns). If t flag is clear and num (xl) < lower (yl), num
+; is set to upper (yh). If t flag is set and num >= lower (in this case, it
+; would be guaranteed that num > upper), then num is set to lower.
+;
+; Operational Description
+; -----------------------
+; If t flag clear, returns without doing anything. If t flag set,
+; performs cpi num, lower. If the result is negative, sets num to upper;
+; otherwise, sets num to lower.
+;
+; Arguments
+; ---------
+; num (int, xl): value that is checked to be within bounds
+; lower (int, yl): lower bound
+; upper (int, yh): upper bound
+;
+; Return Values
+; -------------
+; int, xl (num): the number unchanged if t is set, or changed in the
+;   manner specified if t is clear.
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 0 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Special Notes
+; -------------
+; None
+RotateOutOfBoundsHelper:
+    ;;; arguments
+    ; xl: num
+    ; yl: lower bound
+    ; yh: upper bound
+
+    ;;; if t set, we're all good, so just return
+    brts    RotateOutOfBoundsHelperReturn
+    
+    ;;; otherwise, compare num to lower
+    cp      xl, yl
+    ; if num < lower (i.e. if n is set), set num to upper
+    brmi    RotateOutOfBoundsHelperSetToUpper
+    ; otherwise, set num to lower
+    mov     xl, yl
+    ; and done
+    jmp     RotateOutOfBoundsHelperReturn
+
+  RotateOutOfBoundsHelperSetToUpper:
+    ; set num to upper
+    mov     xl, yh
+    
+  RotateOutOfBoundsHelperReturn:
+    ret

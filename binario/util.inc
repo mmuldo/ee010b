@@ -252,12 +252,15 @@
 .endm
 
 
-; withinBounds(num, lower, upper)
+; withinBoundsHelper(num, lower, upper)
 ; =====================================
 ;
 ; Description
 ; -----------
-; This macro checks if lower <= num <= upper. The t flag is set iff
+; This macro is a helper for withinBounds. The difference between the two is
+; that, for this macro, lower and upper arguments are registers, while for
+; withinBounds, they are immediate values.
+; Checks if lower <= num <= upper. The t flag is set iff
 ; this condition is met.
 ; Syntax:
 ;   withinbounds    Rd, Rr1, Rr2
@@ -313,11 +316,11 @@
 ;
 ; Registers Used
 ; --------------
-; none
+; @0, @2
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 0 bytes
 ;
 ; Limitations
 ; -----------
@@ -326,15 +329,11 @@
 ; Special Notes
 ; -------------
 ; None
-.macro  withinbounds
+.macro  withinBoundsHelper
     ;;; arguments
     ; @0 --> value
     ; @1 --> lower bound
     ; @2 --> upper bound
-
-    ; save these b/c we're gonna overwrite
-    push    @0
-    push    @2
 
     ; @2's sign bit clear iff @0 <= @2
     sub     @2, @0
@@ -347,10 +346,116 @@
     com     @0
     ; t <- @0[7]
     bst     @0, 7
-
-    pop     @2
-    pop     @0
 .endm
+
+
+; withinBounds(num, lower, upper)
+; =====================================
+;
+; Description
+; -----------
+; This macro is a wrapper for withinBoundsHelper. The difference between 
+; the two is that, for this withinBoundsHelper, lower and upper arguments are 
+; registers, while for this macro, they are immediate values.
+; Checks if lower <= num <= upper. The t flag is set iff
+; this condition is met.
+; Syntax:
+;   withinbounds    Rd, lower, upper
+; 0 <= d <= r25, and lower and upper are immediate values.
+; Note that other flags (h, s, v, n, z, c) maybe set as a result of this macro.
+;
+; Operational Description
+; -----------------------
+; Loads lower and upper into registers and calls withinBoundsHelper.
+; The reason we can't use r11, r12, and r13 is because we need those to load
+; arguments to withinBoundsHelper.
+;
+; Arguments
+; ---------
+; num (int, Rd): value that must be within bounds
+; lower (int, immediate): lower bound
+; upper (int, immediate): upper bound
+;
+; Return Values
+; -------------
+; t flag: set iff lower <= num <= upper
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 3 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  withinBounds
+    push    xl
+    push    yl
+    push    yh
+
+    ;;; arguments
+    ; @0 --> value
+    ; @1 --> lower bound
+    ; @2 --> upper bound
+
+    ;;; load arguments into other registers to try and avoid
+    ;;;     conflicts
+    ; xl: value
+    ; yl: lower bound
+    ; yh: upper bound
+    mov     xl, @0
+    ldi     yl, @1
+    ldi     yh, @2
+
+    ;;; run helper (this sets t for us)
+    withinBoundsHelper  xl, yl, yh
+    
+    ;;; recover stuff
+    pop     yh
+    pop     yl
+    pop     xl
+.endm
+
+
 
 
 ; tstWithT(register)
@@ -976,19 +1081,23 @@
 
 
 ; setBitToZ(register, n)
-; =====================================
+; ======================
 ;
 ; Description
 ; -----------
-; Sets register[n] to z flag.
+; Sets register[7-n] to z flag.
+; The reason why it's backwards is because this macro is primarily used for
+; setting the LED display rowVectors, which are indexed backwards
 ; Syntax:
 ;   setBitToZ   Rd, Rr
-; 0 <= d, r <= 31.
+; 0 <= d, r <= 31; d,r != 11.
 ;
 ; Operational Description
 ; -----------------------
 ; push sreg, lslk({one hot mask}, n), pop sreg, set/clear bit 
 ; using hone hot mask based on z flag.
+; The reason we can't use r11 is because that's what we use to shift the
+; masking register into place.
 ;
 ; Arguments
 ; ---------
@@ -1066,8 +1175,10 @@
     push    r17
     ; lslk(oneHotBit, n)
     mov     r17, @1
-    ldi     r16, BIT0_MASK
-    rcall   lslk
+    ;ldi     r16, BIT0_MASK
+    ;rcall   lslk
+    ldi     r16, BIT7_MASK
+    rcall   lsrk
     mov     oneHotBit, r16
     pop     r17
     pop     r16
@@ -1087,4 +1198,105 @@
 
     pop     r11
     pop     r0
+.endm
+
+
+
+
+; rotateOutOfBounds(num, lower, upper)
+; =====================================
+;
+; Description
+; -----------
+; This macro checks if lower <= num <= upper. If not, it performs the following:
+;   num < lower --> sets num to upper
+;   num > upper --> sets num to lower
+; Syntax:
+;   rotateOutOfBounds    Rd, lower, upper
+; 16 <= d <= 25, and lower and upper are immediate values.
+;
+; Operational Description
+; -----------------------
+; Checks if lower <= num <= upper with withinBounds macro.
+; Then it moves Rd to xl, lower to yl,
+; upper to yh and calls RotateOutOfBoundsHelper.
+;
+; Arguments
+; ---------
+; num (int, Rd): value that is checked to be within bounds
+; lower (int, immediate): lower bound
+; upper (int, immediate): upper bound
+;
+; Return Values
+; -------------
+; int, Rd (num): the number unchanged if within bounds, or changed in the
+;   manner specified if out of bounds.
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; None
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 3 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  rotateOutOfBounds
+    push    xl
+    push    yl
+    push    yh
+
+    ;;; set t flag with withinBounds(num, lower, upper)
+    withinBounds    @0, @1, @2
+
+    ;;; RotateOutOfBoundsHelper(num, lower, upper)
+    mov     xl, @0
+    ldi     yl, @1
+    ldi     yh, @2
+    rcall   RotateOutOfBoundsHelper
+
+    ; xl contains adjusted num
+    mov     @0, xl
+
+    pop    yh
+    pop    yl
+    pop    xl
 .endm
