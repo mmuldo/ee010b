@@ -169,7 +169,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 4 bytes
 ;
 ; Limitations
 ; -----------
@@ -314,7 +314,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 4 bytes
+; 6 bytes
 ;
 ; Limitations
 ; -----------

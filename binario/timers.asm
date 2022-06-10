@@ -194,7 +194,7 @@ InitTimer0:
 ;
 ; Stack Depth
 ; -----------
-; 1 byte
+; 15 bytes
 ;
 ; Limitations
 ; -----------

@@ -283,7 +283,7 @@ InitSwitchVars:
 ;
 ; Stack Depth
 ; -----------
-; 4 bytes
+; 6 bytes
 ; 
 ; Limitations
 ; -----------

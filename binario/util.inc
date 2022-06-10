@@ -25,6 +25,8 @@
 ; setBitToZ(register, n): set register[n] = z flag
 ; rotateOutOfBounds(num, lower, upper): if lower <= num <= upper, does nothing;
 ;   if num < lower, num = upper; if num > upper, num = lower
+; buffElementToT(ptr, row, column): puts element at (row, column) in x/y/z
+;   pointer into t flag
 ;
 ; Revision History
 ; ----------------
@@ -40,6 +42,7 @@
 ; 6/06/2022     Matt Muldowney      rotateOutOfBounds macro
 ; 6/06/2022     Matt Muldowney      Z_POSITION consts
 ; 6/07/2022     Matt Muldowney      BIT{n}_MASK consts
+; 6/08/2022     Matt Muldowney      buffElementToT
 
 ; ##########
 ; # consts #
@@ -903,7 +906,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 3 bytes
+; 5 bytes
 ;
 ; Limitations
 ; -----------
@@ -955,7 +958,7 @@
 ;
 ; Arguments
 ; ---------
-; ptr (Rp): 16-bit pointer register to NUM_ROWS x NUM_COLS buffer
+; ptr (Rp): 16-bit kointer to NUM_ROWS x NUM_COLS buffer
 ; row (int, Rd1): row in buffer
 ; column (int, Rd2): column in buffer
 ;

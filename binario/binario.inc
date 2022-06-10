@@ -22,7 +22,7 @@
 ; ----------------
 ; 05/31/2022    Matt Muldowney      directions
 ; 06/01/2022    Matt Muldowney      beeping
-; 06/05/2022    Matt Muldowney      eerom game loading
+; 06/05/2022    Matt Muldowney      eerom game loading consts
 
 ; directions
 ; ==========

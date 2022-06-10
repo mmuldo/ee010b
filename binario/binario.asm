@@ -20,10 +20,12 @@
 ; ------
 ; DirToCoords: converts a direction to a coordinate vector
 ; ColorRotation: maps color to the next color in the rotation
+; WelcomeScreen: welcome message to scroll across display
 ;
 ; Routines
 ; --------
 ; InitBinarioVars: initializes binario shared variables
+; DisplayWelcome: scrolls WelcomeScreen across display
 ; LoadGameFromEEROM(addr): loads GAME_SPACE number of bytes from eerom[addr]
 ;   and plots onto display
 ; GetColor(row, column): gets the current color at (row, column)
@@ -402,10 +404,16 @@ InitBinarioVars:
 
     ;;; intialize game board to all FALSE, such that the game board
     ;;;   doesn't initially reserve any pixels
+    ; point y at game board
+    ldi     yl, low(gameBoard)
+    ldi     yh, high(gameBoard)
     ldi     falseReg, FALSE
+    ; initialize loop var
     ldi     idx, NUM_COLS
   InitBinarioVarsClearGameBoardLoop:
+    ; load FALSE into each column
     st      y+, falseReg
+    ; loop until idx is 0
     dec     idx
     brne    InitBinarioVarsClearGameBoardLoop
 
@@ -479,7 +487,7 @@ InitBinarioVars:
 ;
 ; Stack Depth
 ; -----------
-; 14 bytes
+; 16 bytes
 ;
 ; Limitations
 ; -----------
@@ -533,7 +541,7 @@ DisplayWelcome:
 
 
 ; LoadGameFromEEROM(addr)
-; ==============================
+; =======================
 ;
 ; Description
 ; -----------
@@ -600,7 +608,7 @@ DisplayWelcome:
 ;
 ; Stack Depth
 ; -----------
-; [unknown]
+; 23 bytes
 ;
 ; Limitations
 ; -----------
@@ -860,6 +868,7 @@ GetColor:
 
 
 ; PixelReserved(row, column)
+; ==========================
 ;
 ; Description
 ; -----------
@@ -966,6 +975,7 @@ PixelReserved:
 
 
 ; GetCursorColors(row, column)
+; ============================
 ;
 ; Description
 ; -----------
@@ -1035,11 +1045,11 @@ PixelReserved:
 ;
 ; Registers Used
 ; --------------
-; r18, r19 (r16 and r17 preserved)
+; r18, r19
 ;
 ; Stack Depth
 ; -----------
-; 5 bytes
+; 4 bytes
 ;
 ; Limitations
 ; -----------
@@ -1187,7 +1197,7 @@ GetCursorColors:
 ;
 ; Stack Depth
 ; -----------
-; 11 bytes
+; 16 bytes
 ;
 ; Limitations
 ; -----------
@@ -1362,7 +1372,7 @@ MoveCursor:
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 13 bytes
 ;
 ; Limitations
 ; -----------
@@ -1492,7 +1502,7 @@ Beep:
 ;
 ; Stack Depth
 ; -----------
-; 4 bytes
+; 20 bytes
 ;
 ; Limitations
 ; -----------
@@ -1659,7 +1669,7 @@ RotatePixelColor:
 ;
 ; Stack Depth
 ; -----------
-; 16 bytes
+; 18 bytes
 ;
 ; Limitations
 ; -----------

@@ -287,7 +287,7 @@ SerialReady:
 ;
 ; Stack Depth
 ; --------------
-; 10 bytes
+; 12 bytes
 ;
 ; Limitations
 ; -----------

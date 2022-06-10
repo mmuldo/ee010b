@@ -86,7 +86,7 @@
 ;
 ; Stack Depth
 ; --------------
-; 5 bytes
+; 8 bytes
 ;
 ; Limitations
 ; -----------

@@ -53,8 +53,8 @@
 ;   either be unfilled, red, green, or yellow. There are 8 rows of pixels and
 ;   8 columns of pixels.
 ; speaker:
-;   Gives audio feedback to user. Plays songs during the intro screen, the
-;   game selection screen, and the win screen. During game play, if the use
+;   Gives audio feedback to user. Plays songs during the win screen.
+;   During game play, if the user
 ;   attempts to write a pixel that is part of the initial tableau, the speaker
 ;   will beep once at the use at the frequency specified by BEEP_FREQ (see
 ;   binario.inc).
@@ -63,12 +63,10 @@
 ; --------------
 ; Game introduction
 ;   When initially loading the game, "Binario" will scroll across the LED
-;   matrix followed by "Select a game". Moreover, the speaker will play the
-;   song "Juicy" by Doja Cat. During this time, the inputs to the
+;   matrix followed by "Select a game". During this time, the inputs to the
 ;   system have no effect. Once the scrolling is complete, the next phase is
 ;   game selection.
 ; Game selection
-;   The speaker will continue to play "Juicy" by Doja Cat.
 ;   The LED matrix will display a game that the user can choose to play by
 ;   pressing the up/down switch. Each time the user turns the up/down switch
 ;   up or down, a different game is presented for the user to choose. There
@@ -79,7 +77,6 @@
 ;   choice). Once a game is selected, the next phase is to actually play the
 ;   game.
 ; Game play
-;   The speaker song changes to "Kolors" by Monte Booker.
 ;   The cursor location is conveyed to the user via blinking between two colors
 ;   at the location. The possible blinking patterns given the pixel are as 
 ;   follows:
@@ -112,10 +109,8 @@
 ;   The speaker just beeps at the user twice to indicate they have an incorrect
 ;   solution and then goes back to the game play phase.
 ; User win
-;   Once the user has won the game, the speaker will start playing "Champion"
-;   by Kanye West. After 4 seconds, the display will start blinking "W".
-;   When the user presses the up/down switch, the game will return to the
-;   game introduction phase.
+;   Once the user has won the game, the speaker plays 5 ascending notes.
+;   The game then returns to the introduction phase.
 ;
 ; Error Handling
 ; --------------
@@ -381,7 +376,7 @@ ActionToDir:
 ;
 ; Stack Depth
 ; -----------
-; 19 bytes
+; 31 bytes
 ;
 ; Limitations
 ; -----------
@@ -529,7 +524,7 @@ MainLoop:
 ;
 ; Stack Depth
 ; -----------
-; 16 bytes
+; 29 bytes
 ;
 ; Limitations
 ; -----------
@@ -627,7 +622,7 @@ StateIntro:
 ;
 ; Stack Depth
 ; -----------
-; 19 bytes
+; 18 bytes
 ;
 ; Limitations
 ; -----------
@@ -786,7 +781,7 @@ StateSelect:
 ;
 ; Stack Depth
 ; -----------
-; 19 bytes
+; 22 bytes
 ;
 ; Limitations
 ; -----------
@@ -923,7 +918,7 @@ StatePlay:
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 15 bytes
 ;
 ; Limitations
 ; -----------
@@ -1007,7 +1002,7 @@ StateLoss:
 ;
 ; Stack Depth
 ; -----------
-; 2 bytes
+; 10 bytes
 ;
 ; Limitations
 ; -----------
@@ -1147,7 +1142,7 @@ StateWin:
 ;
 ; Stack Depth
 ; -----------
-; 10 bytes
+; 12 bytes
 ;
 ; Limitations
 ; -----------

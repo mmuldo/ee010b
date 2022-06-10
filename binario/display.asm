@@ -166,7 +166,7 @@ ColorToRGTab:
 ;
 ; Stack Depth
 ; --------------
-; 10 bytes
+; 12 bytes
 ;
 ; Limitations
 ; -----------
@@ -537,7 +537,7 @@ SetCursor:
 ;
 ; Stack Depth
 ; -----------
-; 8 bytes
+; 10 bytes
 ;
 ; Limitations
 ; -----------
@@ -918,7 +918,7 @@ MultiplexDisplay:
 
 
 ; PlotImage(ptr)
-; =======================
+; ==============
 ;
 ; Description
 ; -----------

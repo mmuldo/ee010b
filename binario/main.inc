@@ -36,6 +36,7 @@
 ; 06/07/2022    Matt Muldowney      action enumeration
 ; 06/07/2022    Matt Muldowney      loadGameNumber macro
 ; 06/08/2022    Matt Muldowney      set/getState macros
+; 06/09/2022    Matt Muldowney      victory consts
 
 
 ; ##########
@@ -142,7 +143,7 @@
 ;
 ; Stack Depth
 ; -----------
-; 4 bytes
+; 29 bytes
 ;
 ; Limitations
 ; -----------
