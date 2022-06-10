@@ -50,6 +50,7 @@
 .include "switches.inc"
 .include "sound.inc"
 .include "util.inc"
+.include "display.inc"
 
 
 
@@ -391,4 +392,6 @@ TopOfStack:     .BYTE   1               ;top of the stack
 .include "switches.asm"
 .include "timers.asm"
 .include "ports.asm"
+.include "display.asm"
+.include "util.asm"
 

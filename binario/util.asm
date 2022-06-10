@@ -12,6 +12,9 @@
 ; lsrk(byte, k): performs byte >> k
 ; Div24by16(dividend, divisor): performs dividend/divisor
 ; Delay10ms(n): perform 10ms delay n times
+; RotateOutOfBoundsHelper(num, lower, upper): helper function for
+;   rotateOutOfBounds macro; if t flag set, does nothing; if t flag clear
+;   and num < lower, num = upper; otherwise num = lower
 ;
 ; Revision History
 ; ----------------
@@ -19,6 +22,7 @@
 ; 05/08/2022    Matt Muldowney      clearbit and setbit
 ; 05/27/2022    Matt Muldowney      div24by16
 ; 06/03/2022    Matt Muldowney      Delay10ms
+; 06/06/2022    Matt Muldowney      RotateOutOfBoundsHelper
 
 
 

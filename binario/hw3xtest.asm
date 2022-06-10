@@ -32,7 +32,7 @@
 .include "switches.inc"
 .include "util.inc"
 .include "display.inc"
-.include "serial.inc"
+;.include "serial.inc"
 .include "sound.inc"
 
 
@@ -43,6 +43,8 @@
 
 		        .byte 127
         TopOfStack:	.byte 1
+        test1: .byte 1
+        test2: .byte 1
 
 
 .cseg
@@ -104,17 +106,18 @@ Start:                                  ;start the CPU after a reset
         rcall	InitDisplayPorts
         rcall   InitDisplayVars
         rcall   InitSoundPort
-        rcall   InitSerialIO
+        ;rcall   InitSerialIO
         rcall   InitTimer0
         rcall   InitTimer1
         sei
 
+;ForeverLoop:
+        ;nop
+        ;rcall lslk
+        ;jmp ForeverLoop
         rcall   DisplayTestEx
-        ;ldi     zl, low(2*TestDisplay)
-        ;ldi     zh, high(2*TestDisplay)
-        ;rcall   PlotImage
-        ;ForeverLoop:
-        ;jmp     ForeverLoop
+ 
+
 
 TestDisplay:
         .DB     0b00000000, 0b00000000          ;screen 4
@@ -445,4 +448,4 @@ TestPITab2:
 .include "util.asm"
 .include "display.asm"
 .include "sound.asm"
-.include "serial.asm"
+;.include "serial.asm"

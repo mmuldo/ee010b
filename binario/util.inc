@@ -19,13 +19,12 @@
 ; cb(byte, bitNumber): clears byte[bitNumber]
 ; sb(byte, bitNumber): sets byte[bitNumber]
 ; withinBounds(num, lower, upper): checks lower <= num <= upper
-; tstWithT(register): tst register, but sets t flag instead of z flag
 ; checkBoolean(boolean): sets z flag according to boolean in data memory
 ; toggleOn0(boolean, counter, counterInit): toggles boolean when counter hits 0
 ;   and reinits counter when it hits 0
-; flipBits(byte, biti, bitj, bitjMask): swaps byte[i] and byte[j]
-; flipByte(byte): swaps byte[k] = byte[7-k] (i.e. flips byte around)
 ; setBitToZ(register, n): set register[n] = z flag
+; rotateOutOfBounds(num, lower, upper): if lower <= num <= upper, does nothing;
+;   if num < lower, num = upper; if num > upper, num = lower
 ;
 ; Revision History
 ; ----------------
@@ -36,6 +35,11 @@
 ; 6/03/2022     Matt Muldowney      tstWithT, copyTtoZ macros
 ; 6/03/2022     Matt Muldowney      checkBoolean macro
 ; 6/04/2022     Matt Muldowney      toggleOn0, setBitToZ, flipBits, flipByte
+; 6/06/2022     Matt Muldowney      got rid of tstWithT and copyTtoZ because
+;                                       don't need
+; 6/06/2022     Matt Muldowney      rotateOutOfBounds macro
+; 6/06/2022     Matt Muldowney      Z_POSITION consts
+; 6/07/2022     Matt Muldowney      BIT{n}_MASK consts
 
 ; ##########
 ; # consts #
@@ -458,196 +462,6 @@
 
 
 
-; tstWithT(register)
-; ==================
-; 
-; Description
-; -----------
-; This macro performs a tst on register, but then moves the z flag to the
-; t flag; i.e. it indicates the result of the tst with the t flag instead
-; of the z flag.
-; Syntax:
-;   tstWithT    Rd
-; 0 <= d <= 31
-; Note that other flags (s, n, z) maybe set as a result of this macro.
-; 
-; Operational Description
-; -----------------------
-; Performs a tst on Rd, reads in sreg, then sets t according to z.
-; 
-; Arguments
-; ---------
-; register (Rd): the register to tst
-; 
-; Return Values
-; -------------
-; t: set iff z is set as a result of the tst
-; 
-; Global Variables
-; ----------------
-; None
-; 
-; Shared Variables
-; ----------------
-; none
-; 
-; Local Variables
-; ---------------
-; sregResult (r23): reads in sreg after tst
-; 
-; Inputs
-; ------
-; none
-; 
-; Outputs
-; -------
-; None
-; 
-; Error Handling
-; --------------
-; None
-; 
-; Algorithms
-; ----------
-; none
-; 
-; Data Structures
-; ---------------
-; None
-; 
-; Registers Changed
-; -----------------
-; None
-;
-; Stack Depth
-; -----------
-; 1 byte
-;
-; Limitations
-; -----------
-; None
-; 
-; Known Bugs
-; ----------
-; None
-; 
-; Special Notes
-; -------------
-; None
-.macro  tstWithT
-    push    r0
-
-    .def    sregResult = r0
-
-    ;;; perform tst on register
-    tst     @0
-
-    ;;; get z flag reading
-    in      sregResult, sreg
-    bst     sregResult, Z_POSITION
-
-    pop     r0
-.endm
-
-; notTstWithT(register)
-; ==================
-; 
-; Description
-; -----------
-; This macro performs a tst on register, but then moves  !z to the
-; t flag; i.e. it indicates the opposite result of the tst with the t flag 
-; instead of the z flag.
-; Syntax:
-;   notTstWithT    Rd
-; 0 <= d <= 31, d != 23
-; Note that other flags (s, n, z) maybe set as a result of this macro.
-; 
-; Operational Description
-; -----------------------
-; Performs a tst on Rd, reads in sreg, then sets t according to !z.
-; Can't use r23 because we use that for a local variable.
-; 
-; Arguments
-; ---------
-; register (Rd): the register to tst
-; 
-; Return Values
-; -------------
-; t: set iff z is clear as a result of the tst
-; 
-; Global Variables
-; ----------------
-; None
-; 
-; Shared Variables
-; ----------------
-; none
-; 
-; Local Variables
-; ---------------
-; sregResult: reads in sreg after tst
-; invertZ: when eor'd with sreg, z inverted
-; 
-; Inputs
-; ------
-; none
-; 
-; Outputs
-; -------
-; None
-; 
-; Error Handling
-; --------------
-; None
-; 
-; Algorithms
-; ----------
-; none
-; 
-; Data Structures
-; ---------------
-; None
-; 
-; Registers Changed
-; -----------------
-; None
-;
-; Stack Depth
-; -----------
-; 1 byte
-;
-; Limitations
-; -----------
-; None
-; 
-; Known Bugs
-; ----------
-; None
-; 
-; Special Notes
-; -------------
-; None
-.macro  notTstWithT
-    push    r0
-    push    r23
-
-    .def    sregResult = r0
-
-    .def    invertZ = r23
-    ldi     invertZ, (1<<Z_POSITION)
-
-    ;;; perform tst on register
-    tst     @0
-
-    ;;; get !z flag reading
-    in      sregResult, sreg
-    eor     sregResult, invertZ
-    bst     sregResult, Z_POSITION
-
-    pop     r23
-    pop     r0
-.endm
-
 ; checkBool(boolean)
 ; ==================
 ; 
@@ -898,187 +712,6 @@
 
 
 
-; flipBits(byte, biti, bitj, bitjMask)
-; ====================================
-; 
-; Description
-; -----------
-; Exchanges byte[biti] with byte[bitj].
-; Syntax:
-;   flipBits    Rd, biti, bitj, bitjMask
-; 0 <= d <= 31 and biti, bitj, and bitjMasks are constants.
-; 
-; Operational Description
-; -----------------------
-; Stores biti in t, sets/clears biti according to bitj, and loads
-; t into bitj.
-; 
-; Arguments
-; ---------
-; byte (Rd): register containing bits to flip
-; biti (const): index of the ith bit in byte
-; bitj (const): index of the jth bit in byte
-; bitjMask (const): const for masking off bitj from byte
-; 
-; Return Values
-; -------------
-; Rd (byte): byte with biti and bitj flipped.
-; 
-; Global Variables
-; ----------------
-; None
-; 
-; Shared Variables
-; ----------------
-; none
-; 
-; Local Variables
-; ---------------
-; None
-; 
-; Inputs
-; ------
-; None
-; 
-; Outputs
-; -------
-; None
-; 
-; Error Handling
-; --------------
-; None
-; 
-; Algorithms
-; ----------
-; None
-; 
-; Data Structures
-; ---------------
-; None
-;
-; Registers Changed
-; -----------------
-; None
-;
-; Stack Depth
-; -----------
-; 0 byte
-; 
-; Limitations
-; -----------
-; None
-; 
-; Known Bugs
-; ----------
-; None
-; 
-; Special Notes
-; -------------
-; None
-.macro  flipBits
-    ; store byte[biti] in t flag
-    bst     @0, @1
-
-    ; if byte[bitj] is clear, skip the next instr
-    sbrc    @0, @2
-    ; if byte[bitj] is set, set byte[biti]
-    sbr     @0, @3
-
-    ; if byte[bitj] is set, skip the next instr
-    sbrs    @0, @2
-    ; if byte[bitj] is clear, clear byte[biti]
-    cbr     @0, @3
-
-    ; load t flag into byte[bitj]
-    bld     @0, @2
-.endm
-
-
-
-
-; flipByte(byte)
-; ==============
-; 
-; Description
-; -----------
-; Flips the byte such that byte[k] = byte[7-k]. For example,
-; suppose byte contains 0b01100001; flipByte(byte) would result
-; in byte containing 0b10000110.
-; Syntax:
-;   flipByte    Rd
-; 0 <= d <= 31
-; 
-; Operational Description
-; -----------------------
-; Calls flipBit(byte, k, 7-k, kMask) for (7,0), (6,1), (5,2), and (4,3).
-; 
-; Arguments
-; ---------
-; byte (Rd): register containing byte to flip
-; 
-; Return Values
-; -------------
-; Rd (byte): byte flipped
-; 
-; Global Variables
-; ----------------
-; None
-; 
-; Shared Variables
-; ----------------
-; none
-; 
-; Local Variables
-; ---------------
-; None
-; 
-; Inputs
-; ------
-; None
-; 
-; Outputs
-; -------
-; None
-; 
-; Error Handling
-; --------------
-; None
-; 
-; Algorithms
-; ----------
-; None
-; 
-; Data Structures
-; ---------------
-; None
-;
-; Registers Changed
-; -----------------
-; None
-;
-; Stack Depth
-; -----------
-; 0 bytes
-; 
-; Limitations
-; -----------
-; None
-; 
-; Known Bugs
-; ----------
-; None
-; 
-; Special Notes
-; -------------
-; None
-.macro  flipByte
-    flipBits    @0, 7, 0, BIT7_MASK
-    flipBits    @0, 6, 1, BIT6_MASK
-    flipBits    @0, 5, 2, BIT5_MASK
-    flipBits    @0, 4, 3, BIT4_MASK
-.endm
-
-
 
 ; setBitToZ(register, n)
 ; ======================
@@ -1087,7 +720,7 @@
 ; -----------
 ; Sets register[7-n] to z flag.
 ; The reason why it's backwards is because this macro is primarily used for
-; setting the LED display rowVectors, which are indexed backwards
+; setting the LED display rowVectors, which are indexed backwards.
 ; Syntax:
 ;   setBitToZ   Rd, Rr
 ; 0 <= d, r <= 31; d,r != 11.
@@ -1299,4 +932,109 @@
     pop    yh
     pop    yl
     pop    xl
+.endm
+
+
+
+; buffElementToT(ptr, row, column)
+; ================================
+;
+; Description
+; -----------
+; Sets t flag equal to buffer[row, column], where ptr points to
+; buffer.
+; Syntax:
+;   buffElementToT  Rp, Rd1, Rd2
+; Where 0 <= d1, d2 <= 25, Rp = x, y, or z.
+;
+; Operational Description
+; -----------------------
+; Adjusts buffer to column using y pointer and column argument as offset,
+; then does buffer[column] >> row and sets t equal to the 0th bit of this
+; result.
+;
+; Arguments
+; ---------
+; ptr (Rp): 16-bit pointer register to NUM_ROWS x NUM_COLS buffer
+; row (int, Rd1): row in buffer
+; column (int, Rd2): column in buffer
+;
+; Return Values
+; -------------
+; t flag: set to buffer[row, column]
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; None
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None (assumes caller will handle (row, column) being out of bounds)
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 3 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  buffElementToT
+    push    r16
+    push    r17
+    ; push and column arguments since we overwrite it in this macro
+    push    @2
+
+    ; first get buffer[column]
+    add     @0l, @2
+    ; use @2 to hold 0
+    clr     @2
+    adc     @0h, @2
+
+    ; then get buffer[column][row]
+    mov     r17, @1
+    ld      r16, @0
+    ; buffer[column] << row (puts buffer[column][row] in highest bit of byte)
+    rcall   lslk
+    ; put buffer[row, column] in t
+    bst     r16, 7
+
+    pop     @2
+    pop     r17
+    pop     r16
 .endm

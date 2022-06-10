@@ -288,3 +288,248 @@
     pop     zh
     pop     zl
 .endm
+
+
+
+; getCursorPosition(row, column)
+; =============================
+;
+; Description
+; -----------
+; Puts cursorRow in row and cursorColumn in column
+; Syntax:
+;   getCursorPosition    Rd1, Rd2
+; 0 <= d1, d2 <= 31
+;
+; Operational Description
+; -----------------------
+; loads cursorRow into row and cursorColumn into column
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; int, Rd1 (row): cursor row
+; int, Rd2 (column): cursor column
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; none
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  getCursorPosition
+    ;;; load in cursorRow and cursorColumn
+    lds         @0, cursorRow
+    lds         @1, cursorColumn
+.endm
+
+
+
+; getRedBuffer(high, low)
+; =======================
+;
+; Description
+; -----------
+; Puts low(redBuffer) in low and high(redbuffer) in high
+; Syntax:
+;   getRedBuffer   Rd1, Rd2
+; 16 <= d1, d2 <= 31
+;
+; Operational Description
+; -----------------------
+; loads low(redBuffer) into low and high(redbuffer) into high
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; int, Rd1 (low): low byte of redBuffer's address
+; int, Rd2 (high): high byte of redBuffer's address
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; none
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  getRedBuffer
+    ;;; load address into registers
+    ldi     @1, low(redBuffer)
+    ldi     @0, high(redBuffer)
+.endm
+
+
+; getGreenBuffer(high, low)
+; =======================
+;
+; Description
+; -----------
+; Puts low(greenBuffer) in low and high(greenbuffer) in high
+; Syntax:
+;   getGreenBuffer   Rd1, Rd2
+; 16 <= d1, d2 <= 31
+;
+; Operational Description
+; -----------------------
+; loads low(greenBuffer) into low and high(greenbuffer) into high
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; int, Rd1 (low): low byte of greenBuffer's address
+; int, Rd2 (high): high byte of greenBuffer's address
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shagreen Variables
+; ----------------
+; none
+;
+; Local Variables
+; ---------------
+; none
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; none
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+.macro  getGreenBuffer
+    ;;; load address into registers
+    ldi     @1, low(greenBuffer)
+    ldi     @0, high(greenBuffer)
+.endm

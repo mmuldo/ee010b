@@ -44,6 +44,7 @@
 ; PlotPixel: sets a pixel in the grid to a specified color
 ; MultiplexDisplay: cycles through which column to display
 ; PlotImage: plots image from specified location in program memory
+; DisplayFilled: sets z if display is completely filled, clears otherwise
 ;
 ; Revision History
 ; ----------------
@@ -56,6 +57,7 @@
 ; 05/14/2022    Matt Muldowney      docs
 ; 05/31/2022    Matt Muldowney      PlotImage
 ; 06/03/2022    Matt Muldowney      refactored each routine (functionally the same)
+; 06/08/2022    Matt Muldowney      DisplayFilled
 
 .dseg
     redBuffer:            .byte NUM_COLS
@@ -935,7 +937,7 @@ MultiplexDisplay:
 ;
 ; Arguments
 ; ---------
-; ptr (16 x 8-bit array, z): program memory location of image to plot
+; ptr (NUM_ROWS x (NUM_COLS*2) array, z): program memory location of image to plot
 ;
 ; Return Values
 ; -------------
@@ -978,7 +980,7 @@ MultiplexDisplay:
 ;
 ; Registers Used
 ; --------------
-; z
+; none
 ;
 ; Stack Depth
 ; -----------
@@ -1065,6 +1067,8 @@ PlotImage:
     jmp     PlotImageWhile
 
   PlotImageReturn:
+    pop     zh
+    pop     zl
     pop     yh
     pop     yl
     pop     xh
@@ -1072,6 +1076,140 @@ PlotImage:
     pop     r18
     pop     r17
     pop     r16
+    ret
+
+
+
+; DisplayFilled
+; =============
+;
+; Description
+; -----------
+; Checks if each pixel in display is filled, i.e. no pixel has color OFF.
+; If every pixel is filled, sets z flag; otherwise, clears z flag.
+;
+; Operational Description
+; -----------------------
+; Loops the following NUM_COLS times:
+;   if redBuffer[col] OR greenBuffer[col] != 0xFF, clear z and return
+; If we reach the end of the loop, sets z flag.
+;
+; Arguments
+; ---------
+; none
+;
+; Return Values
+; -------------
+; z flag: set if display filled, cleared otherwise
+;
+; Global Variables
+; ----------------
+; None
+;
+; Shared Variables
+; ----------------
+; redBuffer: R
+; greenBuffer: R
+;
+; Local Variables
+; ---------------
+; columnNumber: loop var
+; redBufferCol: current redBuffer column
+; greenBufferCol: current greenBuffer column
+;
+; Inputs
+; ------
+; None
+;
+; Outputs
+; -------
+; None
+;
+; Error Handling
+; --------------
+; None
+;
+; Algorithms
+; ----------
+; None
+;
+; Data Structures
+; ---------------
+; None
+;
+; Registers Used
+; --------------
+; none
+;
+; Stack Depth
+; -----------
+; 7 bytes
+;
+; Limitations
+; -----------
+; None
+;
+; Known Bugs
+; ----------
+; None
+;
+; Special Notes
+; -------------
+; None
+DisplayFilled:
+    push    r16
+    push    r17
+    push    r18
+    push    yl
+    push    yh
+    push    zl
+    push    zh
+
+    ;;; registers needed
+    ; loop var
+    .def    columnNumber = r16
+    ; current redBuffer[columnNumber]
+    .def    redBufferCol = r17
+    ; current greenBuffer[columnNumber]
+    .def    greenBufferCol = r18
+
+    ;;; get redBuffer and greenBuffer
+    ; point y at redBuffer
+    ldi     yl, low(redBuffer)
+    ldi     yh, high(redBuffer)
+    ; point z at redBuffer
+    ldi     zl, low(greenBuffer)
+    ldi     zh, high(greenBuffer)
+
+    ;;; loop columns
+    ; initialize loop counter
+    ldi     columnNumber, NUM_COLS
+  DisplayFilledLoop:
+    ; get redBuffer[col]
+    ld      redBufferCol, y+
+    ; get greenBuffer[col]
+    ld      greenBufferCol, z+
+
+    ; or them together and check that everything is filled
+    or      redBufferCol, greenBufferCol
+    cpi     redBufferCol, 0xFF
+    ; if not filled, z flag will be cleared
+    ; if not filled, return
+    brne    DisplayFilledReturn
+    ; otherwise, reloop until columnNumber hits 0
+    dec     columnNumber
+    brne    DisplayFilledLoop
+
+    ;;; if we reach this point, all columns are filled, so set z flag
+    sez
+
+    ;;; and done
+  DisplayFilledReturn:
     pop     zh
     pop     zl
+    pop     yl
+    pop     yh
+    pop     r18
+    pop     r17
+    pop     r16
     ret
